@@ -5,15 +5,10 @@ class GameSocket {
     private onUpdateCallbacks: ((gameState: any) => void)[] = [];
 
     connect() {
-        // Get the server URL from environment variable or use a default
-        const serverUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
-        
-        this.socket = io(serverUrl, {
-            transports: ['websocket'],
-            // Add reconnection logic
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000
+        // Connect to the WebSocket server on the same domain
+        this.socket = io({
+            path: '/api/socket/io',
+            addTrailingSlash: false
         });
 
         this.socket.on('connect', () => {
