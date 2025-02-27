@@ -5,14 +5,28 @@ class GameSocket {
     private onUpdateCallbacks: ((gameState: any) => void)[] = [];
 
     connect() {
-        const serverUrl = process.env.NODE_ENV === 'production'
-            ? window.location.origin
-            : 'http://localhost:3001';
-
-        this.socket = io(serverUrl);
+        // Get the server URL from environment variable or use a default
+        const serverUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+        
+        this.socket = io(serverUrl, {
+            transports: ['websocket'],
+            // Add reconnection logic
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
 
         this.socket.on('connect', () => {
-            console.log('Connected to game server');
+            console.log('Connected to game server with ID:', this.socket?.id);
+        });
+
+        this.socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+
+        // Add debug logging for all events
+        this.socket.onAny((event, ...args) => {
+            console.log('Received event:', event, 'with data:', args);
         });
 
         this.socket.on('currentPlayers', (players) => {
@@ -51,6 +65,16 @@ class GameSocket {
             this.socket.disconnect();
             this.socket = null;
         }
+    }
+
+    // Add method to check connection status
+    isConnected(): boolean {
+        return this.socket?.connected || false;
+    }
+
+    // Add method to get player ID
+    getPlayerId(): string | null {
+        return this.socket?.id || null;
     }
 }
 
