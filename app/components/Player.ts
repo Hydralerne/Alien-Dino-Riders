@@ -2,6 +2,19 @@ import * as THREE from 'three';
 import { Vehicles } from './Vehicles';
 
 export class Player {
+    limbs: {
+        leftArm: THREE.Mesh;
+        rightArm: THREE.Mesh;
+        leftLeg: THREE.Mesh;
+        rightLeg: THREE.Mesh;
+    } = {
+            leftArm: new THREE.Mesh(),
+            rightArm: new THREE.Mesh(),
+            leftLeg: new THREE.Mesh(),
+            rightLeg: new THREE.Mesh()
+        };
+    animationTime: number = 0;
+    isMoving: boolean = false;
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     vehicles: Vehicles;
@@ -47,43 +60,113 @@ export class Player {
         const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
         const headMaterial = new THREE.MeshStandardMaterial({ color: skinColor });
         const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 2.2;
+        head.position.y = 1.8;  // Adjusted height
         this.playerModel.add(head);
 
         // Torso
-        const torsoGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
+        const torsoGeometry = new THREE.BoxGeometry(0.5, 0.7, 0.25);  // Slimmer torso
         const torsoMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
         const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
-        torso.position.y = 1.6;
+        torso.position.y = 1.25;  // Adjusted to connect with head
         this.playerModel.add(torso);
+        
+        // Create arm groups for better rotation
+        const leftArmGroup = new THREE.Group();
+        const rightArmGroup = new THREE.Group();
+        leftArmGroup.position.set(-0.3, 1.6, 0);  // Shoulder position
+        rightArmGroup.position.set(0.3, 1.6, 0);   // Shoulder position
 
-        // Left Arm
-        const leftArmGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
+        // Arms
+        const armGeometry = new THREE.BoxGeometry(0.15, 0.5, 0.15);  // Slimmer arms
         const armMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
-        const leftArm = new THREE.Mesh(leftArmGeometry, armMaterial);
-        leftArm.position.set(-0.4, 1.7, 0);
-        this.playerModel.add(leftArm);
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        const rightArm = new THREE.Mesh(armGeometry.clone(), armMaterial);
+        
+        // Position arms relative to their groups
+        leftArm.position.y = -0.25;
+        rightArm.position.y = -0.25;
+        
+        leftArmGroup.add(leftArm);
+        rightArmGroup.add(rightArm);
+        
+        this.playerModel.add(leftArmGroup);
+        this.playerModel.add(rightArmGroup);
+        
+        this.limbs.leftArm = leftArmGroup;
+        this.limbs.rightArm = rightArmGroup;
 
-        // Right Arm
-        const rightArm = new THREE.Mesh(leftArmGeometry.clone(), armMaterial);
-        rightArm.position.set(0.4, 1.7, 0);
-        this.playerModel.add(rightArm);
+        // Create leg groups for better rotation
+        const leftLegGroup = new THREE.Group();
+        const rightLegGroup = new THREE.Group();
+        leftLegGroup.position.set(-0.2, 0.9, 0);   // Hip position
+        rightLegGroup.position.set(0.2, 0.9, 0);    // Hip position
 
-        // Left Leg
-        const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);  // Slimmer legs
         const legMaterial = new THREE.MeshStandardMaterial({ color: pantsColor });
         const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-        leftLeg.position.set(-0.2, 1, 0);
-        this.playerModel.add(leftLeg);
-
-        // Right Leg
         const rightLeg = new THREE.Mesh(legGeometry.clone(), legMaterial);
-        rightLeg.position.set(0.2, 1, 0);
-        this.playerModel.add(rightLeg);
+        
+        // Position legs relative to their groups
+        leftLeg.position.y = -0.3;
+        rightLeg.position.y = -0.3;
+        
+        leftLegGroup.add(leftLeg);
+        rightLegGroup.add(rightLeg);
+        
+        this.playerModel.add(leftLegGroup);
+        this.playerModel.add(rightLegGroup);
+        
+        this.limbs.leftLeg = leftLegGroup;
+        this.limbs.rightLeg = rightLegGroup;
 
         // Update position
         this.playerModel.position.copy(this.position);
         this.scene.add(this.playerModel);
+    }
+
+    animateCharacter(delta: number) {
+        this.isMoving = this.direction.length() > 0;
+        
+        if (this.isMoving) {
+            // Faster animation when running
+            const animationSpeed = this.keys['shift'] ? 8 : 5;
+            this.animationTime += delta * animationSpeed;
+            
+            // Calculate swing angles with better range of motion
+            const swingAngle = Math.sin(this.animationTime) * 0.7; // About 40 degrees max
+            
+            // Animate limbs with proper phase offset for natural walking
+            this.limbs.leftArm.rotation.x = -swingAngle;  // Arms swing opposite to legs
+            this.limbs.rightArm.rotation.x = swingAngle;
+            this.limbs.leftLeg.rotation.x = swingAngle;
+            this.limbs.rightLeg.rotation.x = -swingAngle;
+            
+            // Add slight side-to-side rotation for more natural movement
+            const sideAngle = Math.sin(this.animationTime * 2) * 0.1;
+            this.limbs.leftArm.rotation.z = sideAngle;
+            this.limbs.rightArm.rotation.z = -sideAngle;
+            
+            // Add slight torso bob
+            const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.1;
+            this.playerModel.position.y = this.position.y + bobHeight;
+        } else {
+            // Smoothly return to idle pose
+            this.animationTime = 0;
+            this.resetLimbPositions();
+        }
+    }
+
+    resetLimbPositions() {
+        // Smoothly interpolate back to neutral position
+        ['leftArm', 'rightArm', 'leftLeg', 'rightLeg'].forEach(limb => {
+            if (this.limbs[limb].rotation.x !== 0) {
+                this.limbs[limb].rotation.x *= 0.85;
+            }
+            if (this.limbs[limb].rotation.z !== 0) {
+                this.limbs[limb].rotation.z *= 0.85;
+            }
+        });
     }
 
     setupControls() {
@@ -155,6 +238,11 @@ export class Player {
         // Smooth camera rotation
         this.currentEuler.x += (this.targetEuler.x - this.currentEuler.x) * this.mouseSmoothing;
         this.currentEuler.y += (this.targetEuler.y - this.currentEuler.y) * this.mouseSmoothing;
+
+        // After updating player position, add this:
+        if (!this.currentVehicle) {
+            this.animateCharacter(delta);
+        }
 
         // Apply smoothed rotation to camera
         this.camera.quaternion.setFromEuler(this.currentEuler);
