@@ -15,6 +15,8 @@ export class Player {
     keys: { [key: string]: boolean } = {};
     verticalVelocity: number = 0;
     isGrounded: boolean = true;
+    jumpForce: number = 15;
+    gravity: number = 30;
     mouseSensitivity: number = 0.002;
     mouseSmoothing: number = 0.15;
     positionSmoothing: number = 0.2;
@@ -168,8 +170,29 @@ export class Player {
         // Update target position
         this.targetPosition.add(this.velocity);
 
+        // Handle jumping and gravity when not in a vehicle
+        if (!this.currentVehicle) {
+            // Apply gravity
+            this.verticalVelocity -= this.gravity * delta;
+            
+            // Handle jumping
+            if (this.isGrounded && this.keys[' ']) {
+                this.verticalVelocity = this.jumpForce;
+                this.isGrounded = false;
+            }
+            
+            // Update vertical position
+            this.targetPosition.y += this.verticalVelocity * delta;
+            
+            // Ground check (assuming ground is at y = 1.7)
+            if (this.targetPosition.y <= 1.7) {
+                this.targetPosition.y = 1.7;
+                this.verticalVelocity = 0;
+                this.isGrounded = true;
+            }
+        }
         // Handle vertical movement for spaceships
-        if (this.currentVehicle && this.currentVehicle.type === 'spaceship') {
+        else if (this.currentVehicle.type === 'spaceship') {
             if (this.keys[' ']) {
                 this.targetPosition.y += speed * delta;
             }
@@ -178,7 +201,7 @@ export class Player {
             }
             this.targetPosition.y = Math.max(5, Math.min(100, this.targetPosition.y));
         } else {
-            this.targetPosition.y = this.currentVehicle ? 2 : 1.7;
+            this.targetPosition.y = 2;
         }
 
         // Smooth position update
