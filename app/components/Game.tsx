@@ -23,7 +23,15 @@ export default function Game() {
 
     useEffect(() => {
         if (!containerRef.current) return;
-
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+            }, 500);
+        }
         // Initialize Three.js scene
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB); // Sky blue background
@@ -50,22 +58,6 @@ export default function Game() {
         // Initialize loading manager with proper callbacks
         const loadingManager = new THREE.LoadingManager();
         loadingManagerRef.current = loadingManager;
-        
-        loadingManager.onLoad = () => {
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.classList.add('fade-out');
-                setTimeout(() => {
-                    if (loadingScreen) {
-                        loadingScreen.style.display = 'none';
-                    }
-                }, 500);
-            }
-            // Request pointer lock after loading
-            document.addEventListener('click', () => {
-                containerRef.current?.requestPointerLock();
-            }, { once: true });
-        };
         
         loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
             const progressBar = document.querySelector('.progress-bar-fill');

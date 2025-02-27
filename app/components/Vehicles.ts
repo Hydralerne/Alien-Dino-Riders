@@ -321,70 +321,134 @@ export class Vehicles {
         return dinosaur;
     }
 
-    createTRex(position: THREE.Vector3, scale: number = 1) {
-        // Main body
-        const bodyGeometry = new THREE.CapsuleGeometry(2 * scale, 5 * scale, 4, 8);
-        const bodyMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x6B4226,
-            roughness: 0.8,
-            metalness: 0.2
+    createRealisticTRex(position: THREE.Vector3, scale: number = 2.5) {
+        const group = new THREE.Group();
+        
+        // Better materials with realistic colors
+        const skinMaterial = new THREE.MeshStandardMaterial({
+            color: 0x5A4A3A,  // Natural brown
+            roughness: 0.9,
+            metalness: 0.1,
         });
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.copy(position);
-        body.rotation.z = Math.PI / 2;
 
-        // Head
-        const headGeometry = new THREE.BoxGeometry(2.5 * scale, 1.5 * scale, 2 * scale);
-        const headMaterial = bodyMaterial.clone();
-        headMaterial.color.set(0x5A3825);
-        const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.set(3.5 * scale, 0, 0);
+        // Main body - curved and muscular
+        const bodyGeometry = new THREE.CapsuleGeometry(3 * scale, 8 * scale, 8, 16);
+        const body = new THREE.Mesh(bodyGeometry, skinMaterial);
+        body.rotation.x = Math.PI / 2;
+        body.position.y = 6 * scale;
+
+        // Muscular thighs for back legs
+        const thighGeometry = new THREE.CapsuleGeometry(1.2 * scale, 4 * scale, 8, 8);
+        const leftThigh = new THREE.Mesh(thighGeometry, skinMaterial);
+        leftThigh.position.set(0, 4 * scale, 2 * scale);
+        leftThigh.rotation.x = -Math.PI / 4;
+        const rightThigh = leftThigh.clone();
+        rightThigh.position.z = -2 * scale;
+
+        // Lower legs with claws
+        const shinGeometry = new THREE.CapsuleGeometry(0.8 * scale, 3.5 * scale, 8, 8);
+        const leftShin = new THREE.Mesh(shinGeometry, skinMaterial);
+        leftShin.position.set(0, 1.5 * scale, 2 * scale);
+        leftShin.rotation.x = Math.PI / 6;
+        const rightShin = leftShin.clone();
+        rightShin.position.z = -2 * scale;
+
+        // Detailed head with jaw
+        const headGroup = new THREE.Group();
         
-        // Jaw
-        const jawGeometry = new THREE.BoxGeometry(2.4 * scale, 0.8 * scale, 1.8 * scale);
-        const jaw = new THREE.Mesh(jawGeometry, headMaterial);
-        jaw.position.set(2.8 * scale, -0.6 * scale, 0);
+        // Skull shape
+        const skullGeometry = new THREE.BoxGeometry(4 * scale, 2.5 * scale, 2 * scale);
+        const skull = new THREE.Mesh(skullGeometry, skinMaterial);
         
+        // Snout
+        const snoutGeometry = new THREE.BoxGeometry(3 * scale, 1.5 * scale, 1.8 * scale);
+        const snout = new THREE.Mesh(snoutGeometry, skinMaterial);
+        snout.position.set(2 * scale, -0.2 * scale, 0);
+        
+        // Lower jaw
+        const jawGeometry = new THREE.BoxGeometry(3.5 * scale, 0.8 * scale, 1.5 * scale);
+        const jaw = new THREE.Mesh(jawGeometry, skinMaterial);
+        jaw.position.set(1.8 * scale, -1 * scale, 0);
+        
+        // Teeth
+        const teethMaterial = new THREE.MeshStandardMaterial({ color: 0xFFFFF0 });
+        for (let i = 0; i < 6; i++) {
+            const toothGeometry = new THREE.ConeGeometry(0.2 * scale, 0.6 * scale, 8);
+            const tooth = new THREE.Mesh(toothGeometry, teethMaterial);
+            tooth.rotation.x = Math.PI;
+            tooth.position.set((i - 3) * 0.4 * scale, -0.8 * scale, 0.6 * scale);
+            jaw.add(tooth.clone());
+            tooth.position.z = -0.6 * scale;
+            jaw.add(tooth);
+        }
+
         // Eyes
-        const eyeGeometry = new THREE.SphereGeometry(0.2 * scale);
-        const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const eyeMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x000000,
+            emissive: 0x330000
+        });
+        const eyeGeometry = new THREE.SphereGeometry(0.3 * scale);
         const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(1 * scale, 0.5 * scale, 0.8 * scale);
         const rightEye = leftEye.clone();
-        leftEye.position.set(3.8 * scale, 0.4 * scale, 0.7 * scale);
-        rightEye.position.set(3.8 * scale, 0.4 * scale, -0.7 * scale);
+        rightEye.position.z = -0.8 * scale;
 
-        // Legs
-        const legGeometry = new THREE.CylinderGeometry(0.6 * scale, 0.4 * scale, 2.5 * scale);
-        const legPositions = [
-            [1.5 * scale, -2 * scale, 1.2 * scale],
-            [1.5 * scale, -2 * scale, -1.2 * scale],
-            [-1 * scale, -2 * scale, 1.2 * scale],
-            [-1 * scale, -2 * scale, -1.2 * scale]
-        ];
+        headGroup.add(skull, snout, jaw, leftEye, rightEye);
+        headGroup.position.set(5 * scale, 8 * scale, 0);
+        headGroup.rotation.y = Math.PI / 24;
+
+        // Muscular neck
+        const neckGeometry = new THREE.CapsuleGeometry(1.2 * scale, 2 * scale, 8, 8);
+        const neck = new THREE.Mesh(neckGeometry, skinMaterial);
+        neck.position.set(3 * scale, 7 * scale, 0);
+        neck.rotation.z = -Math.PI / 4;
+
+        // Long tail
+        const tailGroup = new THREE.Group();
+        const segments = 8;
+        for (let i = 0; i < segments; i++) {
+            const tailGeometry = new THREE.CapsuleGeometry(
+                (1 - i/segments) * scale,
+                2 * scale,
+                8,
+                8
+            );
+            const tailSegment = new THREE.Mesh(tailGeometry, skinMaterial);
+            tailSegment.position.set(
+                -3 * scale - (i * 2 * scale),
+                6 * scale - (i * 0.5 * scale),
+                0
+            );
+            tailSegment.rotation.z = Math.PI / 2 + (i * Math.PI / 16);
+            tailGroup.add(tailSegment);
+        }
+
+        // Arms
+        const armGeometry = new THREE.CapsuleGeometry(0.4 * scale, 2 * scale, 8, 8);
+        const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
+        leftArm.position.set(2 * scale, 6 * scale, 1.5 * scale);
+        leftArm.rotation.x = Math.PI / 6;
+        const rightArm = leftArm.clone();
+        rightArm.position.z = -1.5 * scale;
+
+        // Assemble the T-Rex
+        group.add(body, leftThigh, rightThigh, leftShin, rightShin, 
+                  headGroup, neck, tailGroup, leftArm, rightArm);
         
-        legPositions.forEach(pos => {
-            const leg = new THREE.Mesh(legGeometry, bodyMaterial);
-            leg.position.set(pos[0], pos[1], pos[2]);
-            leg.rotation.z = -Math.PI / 4;
-            body.add(leg);
+        // Position the entire dinosaur
+        group.position.copy(position);
+        
+        // Add shadows
+        group.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.castShadow = true;
+                object.receiveShadow = true;
+            }
         });
 
-        // Tail
-        const tailGeometry = new THREE.CylinderGeometry(0.8 * scale, 0.2 * scale, 6 * scale);
-        const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
-        tail.position.set(-3.5 * scale, 0, 0);
-        tail.rotation.z = -Math.PI / 4;
-
-        // Assemble parts
-        body.add(head, jaw, leftEye, rightEye, tail);
-        body.traverse(child => {
-            child.castShadow = true;
-            child.receiveShadow = true;
-        });
-
-        this.scene.add(body);
+        this.scene.add(group);
         this.dinosaurs.push({
-            model: body,
+            model: group,
             speed: 25,
             turnSpeed: 0.02
         });
@@ -399,7 +463,7 @@ export class Vehicles {
         ];
 
         positions.forEach(pos => {
-            this.createTRex(pos, 1.8);
+            this.createRealisticTRex(pos, 1.8);
             // Add slight color variations
             if(Math.random() > 0.5) {
                 pos.y += Math.random() * 2;
@@ -612,4 +676,4 @@ export class Vehicles {
         
         return nearestVehicle;
     }
-} 
+}
