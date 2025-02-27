@@ -326,7 +326,7 @@ export class Player {
         
         if (moveDirection.length() > 0) {
             moveDirection.normalize();
-            const speed = this.keys['shift'] ? this.moveSpeed * 3 : this.moveSpeed;
+            const speed = this.keys['shift'] ? this.moveSpeed * 2 : this.moveSpeed;
             moveDirection.multiplyScalar(speed * delta);
             
             // Update player position
