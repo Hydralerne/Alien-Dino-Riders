@@ -37,6 +37,12 @@ export class Player {
     velocity: THREE.Vector3 = new THREE.Vector3();
     direction: THREE.Vector3 = new THREE.Vector3();
     isMouseLocked: boolean = false;
+    minZoom: number = 5;  // Minimum distance (most zoomed in)
+    maxZoom: number = 20; // Maximum distance (most zoomed out)
+    currentZoom: number = 10; // Starting zoom level
+    targetZoom: number = 10;  // For smooth zooming
+    zoomSpeed: number = 0.5;  // How fast to zoom
+    zoomSmoothing: number = 0.1; // How smooth the zoom transition should be
 
     constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, vehicles: Vehicles) {
         this.scene = scene;
@@ -188,6 +194,15 @@ export class Player {
         if (dinoButton) dinoButton.addEventListener('click', () => this.selectVehicle('dinosaur'));
         if (shipButton) shipButton.addEventListener('click', () => this.selectVehicle('spaceship'));
         if (noneButton) noneButton.addEventListener('click', () => this.selectVehicle('none'));
+
+        // Add mouse wheel zoom control
+        window.addEventListener('wheel', (e) => {
+            // Zoom in/out based on wheel direction
+            this.targetZoom += e.deltaY * this.zoomSpeed * 0.01;
+            
+            // Clamp zoom level between min and max
+            this.targetZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.targetZoom));
+        });
     }
 
     onMouseMove(event: MouseEvent) {
@@ -315,11 +330,14 @@ export class Player {
             this.playerModel.position.copy(this.position);
         }
 
-        // Update camera position for third-person view with improved smoothing
+        // Smooth zoom interpolation
+        this.currentZoom += (this.targetZoom - this.currentZoom) * this.zoomSmoothing;
+
+        // Update camera position for third-person view with zoom
         const cameraOffset = new THREE.Vector3(
-            -Math.sin(this.currentEuler.y) * 10,
+            -Math.sin(this.currentEuler.y) * this.currentZoom,
             this.currentVehicle ? 8 : 5,
-            -Math.cos(this.currentEuler.y) * 10
+            -Math.cos(this.currentEuler.y) * this.currentZoom
         );
 
         const targetCameraPos = this.position.clone().add(cameraOffset);
