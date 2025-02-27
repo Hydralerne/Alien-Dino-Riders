@@ -1,37 +1,41 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-class Vehicles {
-    constructor(scene, loadingManager) {
+export class Vehicles {
+    scene: THREE.Scene;
+    loadingManager: THREE.LoadingManager;
+    dinosaurs: any[] = [];
+    spaceships: any[] = [];
+    loader: GLTFLoader;
+
+    constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
         this.scene = scene;
         this.loadingManager = loadingManager;
-        this.dinosaurs = [];
-        this.spaceships = [];
         this.loader = new GLTFLoader(this.loadingManager);
         this.init();
     }
 
     init() {
-        // Create dinosaurs
+        // Create dinosaurs and spaceships
         this.createDinosaurs();
-        
-        // Create spaceships
         this.createSpaceships();
     }
 
     createDinosaurs() {
-        // Create 3 different dinosaurs
+        // Create more dinosaurs around the pyramids
         const dinosaurPositions = [
-            new THREE.Vector3(-50, 0, -30),
-            new THREE.Vector3(30, 0, -60),
-            new THREE.Vector3(70, 0, 20)
+            new THREE.Vector3(-50, 0, 50),
+            new THREE.Vector3(50, 0, 50),
+            new THREE.Vector3(-150, 0, 100),
+            new THREE.Vector3(150, 0, 100),
+            new THREE.Vector3(0, 0, 150)
         ];
         
-        const dinosaurColors = [0x8B4513, 0x556B2F, 0x800000];
-        const dinosaurTypes = ['T-Rex', 'Triceratops', 'Raptor'];
+        const dinosaurColors = [0x8B4513, 0x556B2F, 0x800000, 0x8B4513, 0x556B2F];
+        const dinosaurTypes = ['T-Rex', 'Triceratops', 'Raptor', 'T-Rex', 'Triceratops'];
         
-        for (let i = 0; i < 3; i++) {
-            // Create simple dinosaur model (will be replaced with proper models)
+        dinosaurPositions.forEach((position, i) => {
+            // Create simple dinosaur model
             const dinoGeometry = new THREE.ConeGeometry(2, 6, 4);
             const bodyGeometry = new THREE.BoxGeometry(3, 2, 5);
             const legGeometry = new THREE.BoxGeometry(0.5, 3, 0.5);
@@ -72,9 +76,13 @@ class Vehicles {
             dinosaur.add(head, body, tail, legFL, legFR, legBL, legBR);
             
             // Position dinosaur
-            dinosaur.position.copy(dinosaurPositions[i]);
-            dinosaur.castShadow = true;
-            dinosaur.receiveShadow = true;
+            dinosaur.position.copy(position);
+            dinosaur.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
             
             this.scene.add(dinosaur);
             
@@ -86,22 +94,24 @@ class Vehicles {
                 speed: 20,
                 turnSpeed: 2
             });
-        }
+        });
     }
 
     createSpaceships() {
-        // Create 3 different spaceships
+        // Create spaceships hovering around the pyramids
         const shipPositions = [
-            new THREE.Vector3(-80, 5, 40),
-            new THREE.Vector3(50, 5, -90),
-            new THREE.Vector3(120, 5, -20)
+            new THREE.Vector3(0, 20, -50),
+            new THREE.Vector3(-100, 30, 0),
+            new THREE.Vector3(100, 25, 0),
+            new THREE.Vector3(-50, 35, 100),
+            new THREE.Vector3(50, 40, 100)
         ];
         
-        const shipColors = [0x808080, 0x4682B4, 0x9370DB];
-        const shipTypes = ['Scout', 'Fighter', 'Cruiser'];
+        const shipColors = [0x808080, 0x4682B4, 0x9370DB, 0x808080, 0x4682B4];
+        const shipTypes = ['Scout', 'Fighter', 'Cruiser', 'Scout', 'Fighter'];
         
-        for (let i = 0; i < 3; i++) {
-            // Create simple spaceship model (will be replaced with proper models)
+        shipPositions.forEach((position, i) => {
+            // Create simple spaceship model
             const bodyGeometry = new THREE.CylinderGeometry(0, 3, 2, 8);
             const cockpitGeometry = new THREE.SphereGeometry(1.5, 16, 16);
             const wingGeometry = new THREE.BoxGeometry(6, 0.2, 2);
@@ -123,7 +133,6 @@ class Vehicles {
             
             // Create spaceship parts
             const body = new THREE.Mesh(bodyGeometry, shipMaterial);
-            
             const cockpit = new THREE.Mesh(cockpitGeometry, new THREE.MeshStandardMaterial({
                 color: 0x87CEFA,
                 metalness: 0.9,
@@ -162,9 +171,13 @@ class Vehicles {
             spaceship.add(body, cockpit, wingL, wingR, engineL, engineR, engineGlowL, engineGlowR);
             
             // Position spaceship
-            spaceship.position.copy(shipPositions[i]);
-            spaceship.castShadow = true;
-            spaceship.receiveShadow = true;
+            spaceship.position.copy(position);
+            spaceship.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
             
             this.scene.add(spaceship);
             
@@ -176,10 +189,10 @@ class Vehicles {
                 speed: 30,
                 turnSpeed: 3
             });
-        }
+        });
     }
 
-    update(delta) {
+    update(delta: number) {
         // Animate dinosaurs (simple idle animation)
         this.dinosaurs.forEach((dino, index) => {
             dino.object.position.y = 0.2 * Math.sin(Date.now() * 0.001 + index) + 0.2;
@@ -201,10 +214,10 @@ class Vehicles {
         });
     }
 
-    getNearestVehicle(playerPosition, type) {
-        let vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
+    getNearestVehicle(playerPosition: THREE.Vector3, type: 'dinosaur' | 'spaceship') {
+        const vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
         let nearestVehicle = null;
-        let minDistance = 10; // Minimum distance to interact
+        let minDistance = 20; // Increased interaction distance
         
         vehicles.forEach(vehicle => {
             const distance = playerPosition.distanceTo(vehicle.object.position);
@@ -216,56 +229,4 @@ class Vehicles {
         
         return nearestVehicle;
     }
-}
-
-let dinosaur, spaceship;
-
-function initVehicles() {
-    // Create temporary vehicles (boxes) until models are loaded
-    createTemporaryVehicles();
-    
-    // Set up vehicle selection buttons
-    setupVehicleControls();
-}
-
-function createTemporaryVehicles() {
-    // Temporary dinosaur (green box)
-    const dinoGeometry = new THREE.BoxGeometry(2, 2, 4);
-    const dinoMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    dinosaur = new THREE.Mesh(dinoGeometry, dinoMaterial);
-    dinosaur.position.set(-5, 1, 0);
-    scene.add(dinosaur);
-
-    // Temporary spaceship (blue box)
-    const shipGeometry = new THREE.BoxGeometry(3, 1, 3);
-    const shipMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-    spaceship = new THREE.Mesh(shipGeometry, shipMaterial);
-    spaceship.position.set(5, 3, 0);
-    scene.add(spaceship);
-}
-
-function setupVehicleControls() {
-    const dinoButton = document.getElementById('select-dinosaur');
-    const shipButton = document.getElementById('select-spaceship');
-    const noneButton = document.getElementById('select-none');
-
-    dinoButton.addEventListener('click', () => selectVehicle('dinosaur'));
-    shipButton.addEventListener('click', () => selectVehicle('spaceship'));
-    noneButton.addEventListener('click', () => selectVehicle('none'));
-}
-
-function selectVehicle(type) {
-    gameState.currentVehicle = type;
-    updateVehiclePosition();
-}
-
-function updateVehicles() {
-    if (gameState.currentVehicle) {
-        updateVehiclePosition();
-    }
-}
-
-function updateVehiclePosition() {
-    // Update vehicle positions based on player position
-    // This will be implemented when player movement is added
-}
+} 
