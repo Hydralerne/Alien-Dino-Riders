@@ -36,15 +36,50 @@ export class Player {
     }
 
     createPlayerModel() {
-        // Create a simple player model
         this.playerModel = new THREE.Group();
 
-        // Body
-        const bodyGeometry = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
-        const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x1E90FF });
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 1;
-        this.playerModel.add(body);
+        // Colors
+        const skinColor = 0xffdbac;
+        const shirtColor = 0x2244ff;
+        const pantsColor = 0x1a1a1a;
+
+        // Head
+        const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const headMaterial = new THREE.MeshStandardMaterial({ color: skinColor });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 2.2;
+        this.playerModel.add(head);
+
+        // Torso
+        const torsoGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.3);
+        const torsoMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
+        const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+        torso.position.y = 1.6;
+        this.playerModel.add(torso);
+
+        // Left Arm
+        const leftArmGeometry = new THREE.BoxGeometry(0.2, 0.6, 0.2);
+        const armMaterial = new THREE.MeshStandardMaterial({ color: shirtColor });
+        const leftArm = new THREE.Mesh(leftArmGeometry, armMaterial);
+        leftArm.position.set(-0.4, 1.7, 0);
+        this.playerModel.add(leftArm);
+
+        // Right Arm
+        const rightArm = new THREE.Mesh(leftArmGeometry.clone(), armMaterial);
+        rightArm.position.set(0.4, 1.7, 0);
+        this.playerModel.add(rightArm);
+
+        // Left Leg
+        const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+        const legMaterial = new THREE.MeshStandardMaterial({ color: pantsColor });
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.2, 1, 0);
+        this.playerModel.add(leftLeg);
+
+        // Right Leg
+        const rightLeg = new THREE.Mesh(legGeometry.clone(), legMaterial);
+        rightLeg.position.set(0.2, 1, 0);
+        this.playerModel.add(rightLeg);
 
         // Update position
         this.playerModel.position.copy(this.position);
@@ -78,7 +113,7 @@ export class Player {
         // Update target euler angles with mouse movement
         this.targetEuler.y -= event.movementX * this.mouseSensitivity;
         this.targetEuler.x -= event.movementY * this.mouseSensitivity;
-        
+
         // Clamp vertical rotation
         this.targetEuler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetEuler.x));
     }
@@ -102,7 +137,7 @@ export class Player {
         this.moveSpeed = vehicle.type === 'spaceship' ? 60 : 40;
         this.turnSpeed = vehicle.type === 'spaceship' ? 3 : 2;
         this.playerModel.visible = false;
-        
+
         this.position.copy(vehicle.object.position);
         this.targetPosition.copy(this.position);
     }
@@ -120,10 +155,10 @@ export class Player {
         // Smooth camera rotation
         this.currentEuler.x += (this.targetEuler.x - this.currentEuler.x) * this.mouseSmoothing;
         this.currentEuler.y += (this.targetEuler.y - this.currentEuler.y) * this.mouseSmoothing;
-        
+
         // Apply smoothed rotation to camera
         this.camera.quaternion.setFromEuler(this.currentEuler);
-        
+
         // Update player model rotation to match camera
         this.playerModel.rotation.y = this.currentEuler.y;
 
@@ -135,36 +170,36 @@ export class Player {
         const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
         forward.y = 0;
         forward.normalize();
-        
+
         const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
         right.y = 0;
         right.normalize();
 
         // Calculate movement direction
         this.direction.set(0, 0, 0);
-        
+
         if (this.keys['w']) this.direction.sub(forward);
         if (this.keys['s']) this.direction.add(forward);
         if (this.keys['a']) this.direction.add(right);
         if (this.keys['d']) this.direction.sub(right);
-        
+
         if (this.direction.length() > 0) {
             this.direction.normalize();
         }
 
         // Apply movement with smooth acceleration
-        const speed = this.currentVehicle ? 
-            (this.currentVehicle.type === 'spaceship' ? 60 : 40) : 
+        const speed = this.currentVehicle ?
+            (this.currentVehicle.type === 'spaceship' ? 60 : 40) :
             this.moveSpeed;
-        
+
         const acceleration = this.keys['shift'] ? speed * 2.5 : speed;
-        
+
         this.velocity.add(this.direction.multiplyScalar(acceleration * delta));
-        
+
         // Apply movement with momentum
         const damping = 0.95;
         this.velocity.multiplyScalar(damping);
-        
+
         // Update target position
         this.targetPosition.add(this.velocity);
 
@@ -198,10 +233,10 @@ export class Player {
             this.currentVehicle ? 8 : 5,
             -Math.cos(this.currentEuler.y) * 10
         );
-        
+
         const targetCameraPos = this.position.clone().add(cameraOffset);
         this.camera.position.lerp(targetCameraPos, 0.15);
-        
+
         // Make camera look at player with smoothed position
         const lookAtPos = this.position.clone();
         lookAtPos.y += this.currentVehicle ? 4 : 2;
