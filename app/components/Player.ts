@@ -6,16 +6,18 @@ export class Player {
     camera: THREE.PerspectiveCamera;
     vehicles: Vehicles;
     currentVehicle: any | null = null;
-    moveSpeed: number = 20;
+    moveSpeed: number = 30;
     turnSpeed: number = 3;
     position: THREE.Vector3;
+    targetPosition: THREE.Vector3;
     rotation: number = 0;
     playerModel!: THREE.Group;
     keys: { [key: string]: boolean } = {};
     verticalVelocity: number = 0;
     isGrounded: boolean = true;
     mouseSensitivity: number = 0.002;
-    mouseSmoothing: number = 0.5;
+    mouseSmoothing: number = 0.15;
+    positionSmoothing: number = 0.2;
     targetEuler: THREE.Euler = new THREE.Euler(0, 0, 0, 'YXZ');
     currentEuler: THREE.Euler = new THREE.Euler(0, 0, 0, 'YXZ');
     euler: THREE.Euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -28,6 +30,7 @@ export class Player {
         this.camera = camera;
         this.vehicles = vehicles;
         this.position = new THREE.Vector3(0, 1.7, 200);
+        this.targetPosition = this.position.clone();
         this.createPlayerModel();
         this.setupControls();
     }
@@ -96,19 +99,21 @@ export class Player {
 
     mountVehicle(vehicle: any) {
         this.currentVehicle = vehicle;
-        this.moveSpeed = vehicle.type === 'spaceship' ? 40 : 25;
+        this.moveSpeed = vehicle.type === 'spaceship' ? 60 : 40;
         this.turnSpeed = vehicle.type === 'spaceship' ? 3 : 2;
         this.playerModel.visible = false;
         
         this.position.copy(vehicle.object.position);
+        this.targetPosition.copy(this.position);
     }
 
     dismountVehicle() {
         this.currentVehicle = null;
-        this.moveSpeed = 15;
+        this.moveSpeed = 30;
         this.turnSpeed = 2.5;
         this.playerModel.visible = true;
         this.playerModel.position.copy(this.position);
+        this.targetPosition.copy(this.position);
     }
 
     update(delta: number) {
@@ -138,10 +143,10 @@ export class Player {
         // Calculate movement direction
         this.direction.set(0, 0, 0);
         
-        if (this.keys['w']) this.direction.add(forward);
-        if (this.keys['s']) this.direction.sub(forward);
-        if (this.keys['a']) this.direction.sub(right);
-        if (this.keys['d']) this.direction.add(right);
+        if (this.keys['w']) this.direction.sub(forward);
+        if (this.keys['s']) this.direction.add(forward);
+        if (this.keys['a']) this.direction.add(right);
+        if (this.keys['d']) this.direction.sub(right);
         
         if (this.direction.length() > 0) {
             this.direction.normalize();
@@ -149,34 +154,37 @@ export class Player {
 
         // Apply movement with smooth acceleration
         const speed = this.currentVehicle ? 
-            (this.currentVehicle.type === 'spaceship' ? 50 : 30) : 
+            (this.currentVehicle.type === 'spaceship' ? 60 : 40) : 
             this.moveSpeed;
         
-        const acceleration = this.keys['shift'] ? speed * 2 : speed;
+        const acceleration = this.keys['shift'] ? speed * 2.5 : speed;
         
         this.velocity.add(this.direction.multiplyScalar(acceleration * delta));
         
         // Apply movement with momentum
-        const damping = 0.9;
+        const damping = 0.95;
         this.velocity.multiplyScalar(damping);
         
-        // Update position
-        this.position.add(this.velocity);
+        // Update target position
+        this.targetPosition.add(this.velocity);
 
         // Handle vertical movement for spaceships
         if (this.currentVehicle && this.currentVehicle.type === 'spaceship') {
             if (this.keys[' ']) {
-                this.position.y += speed * delta;
+                this.targetPosition.y += speed * delta;
             }
             if (this.keys['control']) {
-                this.position.y -= speed * delta;
+                this.targetPosition.y -= speed * delta;
             }
-            this.position.y = Math.max(5, Math.min(100, this.position.y));
+            this.targetPosition.y = Math.max(5, Math.min(100, this.targetPosition.y));
         } else {
-            this.position.y = this.currentVehicle ? 2 : 1.7;
+            this.targetPosition.y = this.currentVehicle ? 2 : 1.7;
         }
 
-        // Update vehicle or player model
+        // Smooth position update
+        this.position.lerp(this.targetPosition, this.positionSmoothing);
+
+        // Update vehicle or player model with smoothed position
         if (this.currentVehicle) {
             this.currentVehicle.object.position.copy(this.position);
             this.currentVehicle.object.rotation.y = this.currentEuler.y;
@@ -184,7 +192,7 @@ export class Player {
             this.playerModel.position.copy(this.position);
         }
 
-        // Update camera position for third-person view
+        // Update camera position for third-person view with improved smoothing
         const cameraOffset = new THREE.Vector3(
             -Math.sin(this.currentEuler.y) * 10,
             this.currentVehicle ? 8 : 5,
@@ -192,9 +200,9 @@ export class Player {
         );
         
         const targetCameraPos = this.position.clone().add(cameraOffset);
-        this.camera.position.lerp(targetCameraPos, 0.1);
+        this.camera.position.lerp(targetCameraPos, 0.15);
         
-        // Make camera look at player
+        // Make camera look at player with smoothed position
         const lookAtPos = this.position.clone();
         lookAtPos.y += this.currentVehicle ? 4 : 2;
         this.camera.lookAt(lookAtPos);

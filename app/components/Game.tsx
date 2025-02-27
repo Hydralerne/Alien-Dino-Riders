@@ -54,10 +54,17 @@ export default function Game() {
         loadingManager.onLoad = () => {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) {
-                loadingScreen.style.display = 'none';
+                loadingScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    if (loadingScreen) {
+                        loadingScreen.style.display = 'none';
+                    }
+                }, 500);
             }
             // Request pointer lock after loading
-            containerRef.current?.requestPointerLock();
+            document.addEventListener('click', () => {
+                containerRef.current?.requestPointerLock();
+            }, { once: true });
         };
         
         loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
@@ -131,7 +138,9 @@ export default function Game() {
             const delta = Math.min((time - lastTimeRef.current) / 1000, 0.1);
             lastTimeRef.current = time;
 
-            playerRef.current.update(delta);
+            if (playerRef.current) {
+                playerRef.current.update(delta);
+            }
 
             if (vehiclesRef.current) {
                 vehiclesRef.current.update(delta);
@@ -167,7 +176,7 @@ export default function Game() {
 
     return (
         <div>
-            <div id="loading-screen">
+            <div id="loading-screen" className="loading-screen">
                 <div className="loading-content">
                     <h1>Pyramids of Egypt: Aliens & Dinosaurs</h1>
                     <div className="progress-bar">
@@ -184,6 +193,61 @@ export default function Game() {
                 </div>
             </div>
             <div ref={containerRef} id="game-container" />
+            <style jsx>{`
+                .loading-screen {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.9);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000;
+                    transition: opacity 0.5s;
+                }
+                .loading-screen.fade-out {
+                    opacity: 0;
+                }
+                .loading-content {
+                    text-align: center;
+                    color: white;
+                }
+                .progress-bar {
+                    width: 300px;
+                    height: 20px;
+                    background: #333;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    margin: 20px auto;
+                }
+                .progress-bar-fill {
+                    width: 0%;
+                    height: 100%;
+                    background: #4CAF50;
+                    transition: width 0.3s;
+                }
+                #game-ui {
+                    position: fixed;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 100;
+                }
+                #vehicle-selection button {
+                    margin: 0 10px;
+                    padding: 10px 20px;
+                    background: rgba(0, 0, 0, 0.7);
+                    color: white;
+                    border: 1px solid white;
+                    cursor: pointer;
+                    transition: background 0.3s;
+                }
+                #vehicle-selection button:hover {
+                    background: rgba(0, 0, 0, 0.9);
+                }
+            `}</style>
         </div>
     );
 } 
