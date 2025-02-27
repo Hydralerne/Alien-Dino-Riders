@@ -143,7 +143,7 @@ export class Player {
             const swingAngle = Math.sin(this.animationTime) * 0.7; // About 40 degrees max
             
             // Animate limbs with proper phase offset for natural walking
-            this.limbs.leftArm.rotation.x = -swingAngle;  // Arms swing opposite to legs
+            this.limbs.leftArm.rotation.x = -swingAngle;
             this.limbs.rightArm.rotation.x = swingAngle;
             this.limbs.leftLeg.rotation.x = swingAngle;
             this.limbs.rightLeg.rotation.x = -swingAngle;
@@ -153,13 +153,16 @@ export class Player {
             this.limbs.leftArm.rotation.z = sideAngle;
             this.limbs.rightArm.rotation.z = -sideAngle;
             
-            // Add slight torso bob
+            // Add slight torso bob but keep it at a fixed height
+            const baseHeight = this.currentVehicle ? 2 : 1.7;
             const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.1;
-            this.playerModel.position.y = this.position.y + bobHeight;
+            this.playerModel.position.y = baseHeight + bobHeight;
         } else {
             // Smoothly return to idle pose
             this.animationTime = 0;
             this.resetLimbPositions();
+            // Reset to base height when not moving
+            this.playerModel.position.y = this.currentVehicle ? 2 : 1.7;
         }
     }
 
@@ -212,8 +215,10 @@ export class Player {
         this.targetEuler.y -= event.movementX * this.mouseSensitivity;
         this.targetEuler.x -= event.movementY * this.mouseSensitivity;
 
-        // Clamp vertical rotation
-        this.targetEuler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetEuler.x));
+        // Increase vertical rotation range to about 80 degrees up and down
+        // (changed from Math.PI/2 which was 90 degrees)
+        const maxVerticalRotation = (Math.PI * 0.85);
+        this.targetEuler.x = Math.max(-maxVerticalRotation, Math.min(maxVerticalRotation, this.targetEuler.x));
     }
 
     selectVehicle(type: 'dinosaur' | 'spaceship' | 'none') {
@@ -269,14 +274,12 @@ export class Player {
         this.velocity.x = 0;
         this.velocity.z = 0;
 
-        // Get forward and right directions from camera
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-        forward.y = 0;
-        forward.normalize();
-
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-        right.y = 0;
-        right.normalize();
+        // Get forward and right directions from camera, but ignore vertical rotation for movement
+        const movementEuler = new THREE.Euler(0, this.currentEuler.y, 0, 'YXZ');
+        const movementQuat = new THREE.Quaternion().setFromEuler(movementEuler);
+        
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(movementQuat);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(movementQuat);
 
         // Calculate movement direction
         this.direction.set(0, 0, 0);
@@ -333,11 +336,14 @@ export class Player {
         // Smooth zoom interpolation
         this.currentZoom += (this.targetZoom - this.currentZoom) * this.zoomSmoothing;
 
-        // Update camera position for third-person view with zoom
+        // Update camera position for third-person view with zoom and improved vertical rotation
+        const verticalOffset = Math.sin(this.currentEuler.x) * this.currentZoom;
+        const horizontalDistance = Math.cos(Math.abs(this.currentEuler.x)) * this.currentZoom;
+
         const cameraOffset = new THREE.Vector3(
-            -Math.sin(this.currentEuler.y) * this.currentZoom,
-            this.currentVehicle ? 8 : 5,
-            -Math.cos(this.currentEuler.y) * this.currentZoom
+            -Math.sin(this.currentEuler.y) * horizontalDistance,
+            (this.currentVehicle ? 8 : 5) + verticalOffset, // Keep base height constant
+            -Math.cos(this.currentEuler.y) * horizontalDistance
         );
 
         const targetCameraPos = this.position.clone().add(cameraOffset);
