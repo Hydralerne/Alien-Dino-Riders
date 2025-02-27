@@ -8,6 +8,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Environment } from './Environment';
 import { Vehicles } from './Vehicles';
 import { Player } from './Player';
+import { gameSocket } from '../lib/socket';
 
 export default function Game() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -20,6 +21,9 @@ export default function Game() {
     const environmentRef = useRef<Environment | null>(null);
     const lastTimeRef = useRef<number>(0);
     const animationFrameRef = useRef<number | undefined>(undefined);
+    const gameStateRef = useRef({
+        players: {}
+    });
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -154,6 +158,28 @@ export default function Game() {
         };
         window.addEventListener('resize', handleResize);
 
+        // Connect to WebSocket server
+        gameSocket.connect();
+
+        // Handle game state updates
+        gameSocket.onUpdate((update) => {
+            switch (update.type) {
+                case 'currentPlayers':
+                    gameStateRef.current.players = update.players;
+                    break;
+                case 'playerJoined':
+                    gameStateRef.current.players[update.player.id] = update.player;
+                    break;
+                case 'playerMoved':
+                    gameStateRef.current.players[update.player.id] = update.player;
+                    break;
+                case 'playerLeft':
+                    delete gameStateRef.current.players[update.playerId];
+                    break;
+            }
+            // Update your game rendering here
+        });
+
         // Cleanup
         return () => {
             window.removeEventListener('resize', handleResize);
@@ -163,6 +189,7 @@ export default function Game() {
             }
             containerRef.current?.removeChild(renderer.domElement);
             renderer.dispose();
+            gameSocket.disconnect();
         };
     }, []);
 
