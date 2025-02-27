@@ -36,7 +36,7 @@ export default function Game() {
             0.1,
             2000
         );
-        camera.position.set(0, 100, 200); // Higher initial position
+        camera.position.set(0, 100, 200);
         cameraRef.current = camera;
 
         // Initialize renderer
@@ -47,40 +47,57 @@ export default function Game() {
         containerRef.current.appendChild(renderer.domElement);
         rendererRef.current = renderer;
 
-        // Add OrbitControls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.screenSpacePanning = false;
-        controls.minDistance = 10;
-        controls.maxDistance = 500;
-        controls.maxPolarAngle = Math.PI / 2;
-
-        // Initialize loading manager
-        const loadingManager = new THREE.LoadingManager(
-            // onLoad
-            () => {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-            },
-            // onProgress
-            (url, itemsLoaded, itemsTotal) => {
-                const progressBar = document.querySelector('.progress-bar-fill');
-                if (progressBar) {
-                    const progress = (itemsLoaded / itemsTotal) * 100;
-                    progressBar.setAttribute('style', `width: ${progress}%`);
-                }
-            }
-        );
+        // Initialize loading manager with proper callbacks
+        const loadingManager = new THREE.LoadingManager();
         loadingManagerRef.current = loadingManager;
+        
+        loadingManager.onLoad = () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+            // Request pointer lock after loading
+            containerRef.current?.requestPointerLock();
+        };
+        
+        loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+            const progressBar = document.querySelector('.progress-bar-fill');
+            if (progressBar) {
+                const progress = (itemsLoaded / itemsTotal) * 100;
+                progressBar.setAttribute('style', `width: ${progress}%`);
+            }
+        };
 
-        // Add lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        loadingManager.onError = (url) => {
+            console.error('Error loading:', url);
+        };
+
+        // Setup pointer lock handling
+        const onPointerLockChange = () => {
+            if (document.pointerLockElement === containerRef.current) {
+                console.log('Pointer locked');
+            } else {
+                console.log('Pointer unlocked');
+                // Re-request pointer lock when user clicks again
+                const onClick = () => {
+                    containerRef.current?.requestPointerLock();
+                };
+                containerRef.current?.addEventListener('click', onClick, { once: true });
+            }
+        };
+
+        document.addEventListener('pointerlockchange', onPointerLockChange);
+        
+        // Initial pointer lock request
+        containerRef.current.addEventListener('click', () => {
+            containerRef.current?.requestPointerLock();
+        });
+
+        // Add lights with better intensity
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
         directionalLight.position.set(100, 100, 50);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
@@ -101,20 +118,20 @@ export default function Game() {
         const vehicles = new Vehicles(scene, loadingManager);
         vehiclesRef.current = vehicles;
 
-        // Initialize player
+        // Initialize player with better controls
         const player = new Player(scene, camera, vehicles);
         playerRef.current = player;
 
         // Animation loop
         const animate = (time: number) => {
+            if (!playerRef.current) return;
+            
             animationFrameRef.current = requestAnimationFrame(animate);
 
-            const delta = (time - lastTimeRef.current) / 1000;
+            const delta = Math.min((time - lastTimeRef.current) / 1000, 0.1);
             lastTimeRef.current = time;
 
-            if (playerRef.current) {
-                playerRef.current.update(delta);
-            }
+            playerRef.current.update(delta);
 
             if (vehiclesRef.current) {
                 vehiclesRef.current.update(delta);
@@ -122,6 +139,8 @@ export default function Game() {
 
             renderer.render(scene, camera);
         };
+
+        // Start animation loop
         animate(0);
 
         // Handle window resize
@@ -137,6 +156,7 @@ export default function Game() {
         // Cleanup
         return () => {
             window.removeEventListener('resize', handleResize);
+            document.removeEventListener('pointerlockchange', onPointerLockChange);
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }

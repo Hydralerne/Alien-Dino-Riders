@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 export class Vehicles {
     scene: THREE.Scene;
@@ -12,6 +13,12 @@ export class Vehicles {
         this.scene = scene;
         this.loadingManager = loadingManager;
         this.loader = new GLTFLoader(this.loadingManager);
+        
+        // Setup DRACO loader for compressed models
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('/draco/');
+        this.loader.setDRACOLoader(dracoLoader);
+        
         this.init();
     }
 
@@ -24,98 +31,94 @@ export class Vehicles {
     createDinosaurs() {
         // Create more dinosaurs around the pyramids
         const dinosaurPositions = [
-            new THREE.Vector3(-50, 0, 50),
-            new THREE.Vector3(50, 0, 50),
-            new THREE.Vector3(-150, 0, 100),
-            new THREE.Vector3(150, 0, 100),
-            new THREE.Vector3(0, 0, 150)
+            new THREE.Vector3(200, 0, 100),     // T-Rex
+            new THREE.Vector3(-200, 0, -150),   // Triceratops
+            new THREE.Vector3(150, 0, -200),    // Raptor
+            new THREE.Vector3(-150, 0, 200),    // Spinosaurus
+            new THREE.Vector3(300, 0, -100),    // Stegosaurus
+            new THREE.Vector3(-300, 0, 100),    // Brachiosaurus
+            new THREE.Vector3(250, 0, -250),    // Pterodactyl
+            new THREE.Vector3(-250, 0, -250)    // Ankylosaurus
         ];
         
-        const dinosaurColors = [0x8B4513, 0x556B2F, 0x800000, 0x8B4513, 0x556B2F];
-        const dinosaurTypes = ['T-Rex', 'Triceratops', 'Raptor', 'T-Rex', 'Triceratops'];
+        const dinosaurTypes = [
+            { name: 'T-Rex', model: '/models/trex.glb', scale: 2.0 },
+            { name: 'Triceratops', model: '/models/triceratops.glb', scale: 1.8 },
+            { name: 'Raptor', model: '/models/raptor.glb', scale: 1.5 },
+            { name: 'Spinosaurus', model: '/models/spinosaurus.glb', scale: 2.0 },
+            { name: 'Stegosaurus', model: '/models/stegosaurus.glb', scale: 1.8 },
+            { name: 'Brachiosaurus', model: '/models/brachiosaurus.glb', scale: 2.5 },
+            { name: 'Pterodactyl', model: '/models/pterodactyl.glb', scale: 1.5 },
+            { name: 'Ankylosaurus', model: '/models/ankylosaurus.glb', scale: 1.8 }
+        ];
         
         dinosaurPositions.forEach((position, i) => {
-            // Create simple dinosaur model
-            const dinoGeometry = new THREE.ConeGeometry(2, 6, 4);
-            const bodyGeometry = new THREE.BoxGeometry(3, 2, 5);
-            const legGeometry = new THREE.BoxGeometry(0.5, 3, 0.5);
-            const tailGeometry = new THREE.CylinderGeometry(0.5, 0.1, 4, 8);
+            const dinoType = dinosaurTypes[i];
             
-            const dinoMaterial = new THREE.MeshStandardMaterial({ 
-                color: dinosaurColors[i],
-                roughness: 0.7,
-                metalness: 0.2
-            });
-            
-            // Create dinosaur parts
-            const head = new THREE.Mesh(dinoGeometry, dinoMaterial);
-            head.rotation.x = Math.PI / 2;
-            head.position.set(0, 3, -3);
-            
-            const body = new THREE.Mesh(bodyGeometry, dinoMaterial);
-            body.position.set(0, 2.5, 0);
-            
-            const tail = new THREE.Mesh(tailGeometry, dinoMaterial);
-            tail.position.set(0, 2.5, 3);
-            tail.rotation.x = Math.PI / 2;
-            
-            const legFL = new THREE.Mesh(legGeometry, dinoMaterial);
-            legFL.position.set(-1, 0.5, -1.5);
-            
-            const legFR = new THREE.Mesh(legGeometry, dinoMaterial);
-            legFR.position.set(1, 0.5, -1.5);
-            
-            const legBL = new THREE.Mesh(legGeometry, dinoMaterial);
-            legBL.position.set(-1, 0.5, 1.5);
-            
-            const legBR = new THREE.Mesh(legGeometry, dinoMaterial);
-            legBR.position.set(1, 0.5, 1.5);
-            
-            // Create dinosaur group
-            const dinosaur = new THREE.Group();
-            dinosaur.add(head, body, tail, legFL, legFR, legBL, legBR);
-            
-            // Position dinosaur
-            dinosaur.position.copy(position);
-            dinosaur.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            
-            this.scene.add(dinosaur);
-            
-            // Add to dinosaurs array
-            this.dinosaurs.push({
-                object: dinosaur,
-                type: 'dinosaur',
-                name: dinosaurTypes[i],
-                speed: 20,
-                turnSpeed: 2
+            // Load GLTF model
+            this.loader.load(dinoType.model, (gltf) => {
+                const model = gltf.scene;
+                
+                // Apply scale
+                model.scale.setScalar(dinoType.scale);
+                
+                // Position dinosaur
+                model.position.copy(position);
+                
+                // Enable shadows
+                model.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        
+                        // Improve material quality
+                        if (child.material) {
+                            child.material.roughness = 0.8;
+                            child.material.metalness = 0.2;
+                            child.material.envMapIntensity = 1.0;
+                        }
+                    }
+                });
+                
+                this.scene.add(model);
+                
+                // Add to dinosaurs array with specific speeds
+                const speed = dinoType.name === 'Raptor' ? 35 :
+                             dinoType.name === 'T-Rex' ? 30 :
+                             dinoType.name === 'Pterodactyl' ? 40 : 25;
+                
+                this.dinosaurs.push({
+                    object: model,
+                    type: 'dinosaur',
+                    name: dinoType.name,
+                    speed: speed,
+                    turnSpeed: dinoType.name === 'Raptor' ? 3 : 2,
+                    animations: gltf.animations
+                });
             });
         });
     }
 
     createSpaceships() {
-        // Create spaceships hovering around the pyramids
+        // Create spaceships hovering around the pyramids (not inside)
         const shipPositions = [
-            new THREE.Vector3(0, 20, -50),
-            new THREE.Vector3(-100, 30, 0),
-            new THREE.Vector3(100, 25, 0),
-            new THREE.Vector3(-50, 35, 100),
-            new THREE.Vector3(50, 40, 100)
+            new THREE.Vector3(200, 40, -200),   // Far right high
+            new THREE.Vector3(-200, 50, -150),  // Far left high
+            new THREE.Vector3(0, 60, -300),     // Far back high
+            new THREE.Vector3(-250, 45, 200),   // Far front left
+            new THREE.Vector3(250, 55, 150)     // Far front right
         ];
         
         const shipColors = [0x808080, 0x4682B4, 0x9370DB, 0x808080, 0x4682B4];
         const shipTypes = ['Scout', 'Fighter', 'Cruiser', 'Scout', 'Fighter'];
         
         shipPositions.forEach((position, i) => {
-            // Create simple spaceship model
-            const bodyGeometry = new THREE.CylinderGeometry(0, 3, 2, 8);
-            const cockpitGeometry = new THREE.SphereGeometry(1.5, 16, 16);
-            const wingGeometry = new THREE.BoxGeometry(6, 0.2, 2);
-            const engineGeometry = new THREE.CylinderGeometry(0.5, 0.8, 1, 8);
+            // Create larger spaceship model
+            const scale = 2; // Make spaceships larger
+            const bodyGeometry = new THREE.CylinderGeometry(0, 3 * scale, 2 * scale, 8);
+            const cockpitGeometry = new THREE.SphereGeometry(1.5 * scale, 16, 16);
+            const wingGeometry = new THREE.BoxGeometry(6 * scale, 0.2 * scale, 2 * scale);
+            const engineGeometry = new THREE.CylinderGeometry(0.5 * scale, 0.8 * scale, 1 * scale, 8);
             
             const shipMaterial = new THREE.MeshStandardMaterial({ 
                 color: shipColors[i],
@@ -140,31 +143,31 @@ export class Vehicles {
                 transparent: true,
                 opacity: 0.7
             }));
-            cockpit.position.set(0, 1, 0);
+            cockpit.position.set(0, 1 * scale, 0);
             
             const wingL = new THREE.Mesh(wingGeometry, shipMaterial);
-            wingL.position.set(-3, 0, 0);
+            wingL.position.set(-3 * scale, 0, 0);
             
             const wingR = new THREE.Mesh(wingGeometry, shipMaterial);
-            wingR.position.set(3, 0, 0);
+            wingR.position.set(3 * scale, 0, 0);
             
             const engineL = new THREE.Mesh(engineGeometry, shipMaterial);
-            engineL.position.set(-2, -0.5, 1);
+            engineL.position.set(-2 * scale, -0.5 * scale, 1 * scale);
             
             const engineR = new THREE.Mesh(engineGeometry, shipMaterial);
-            engineR.position.set(2, -0.5, 1);
+            engineR.position.set(2 * scale, -0.5 * scale, 1 * scale);
             
             const engineGlowL = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.3, 0.5, 0.5, 8),
+                new THREE.CylinderGeometry(0.3 * scale, 0.5 * scale, 0.5 * scale, 8),
                 glowMaterial
             );
-            engineGlowL.position.set(-2, -1, 1);
+            engineGlowL.position.set(-2 * scale, -1 * scale, 1 * scale);
             
             const engineGlowR = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.3, 0.5, 0.5, 8),
+                new THREE.CylinderGeometry(0.3 * scale, 0.5 * scale, 0.5 * scale, 8),
                 glowMaterial
             );
-            engineGlowR.position.set(2, -1, 1);
+            engineGlowR.position.set(2 * scale, -1 * scale, 1 * scale);
             
             // Create spaceship group
             const spaceship = new THREE.Group();
@@ -193,10 +196,16 @@ export class Vehicles {
     }
 
     update(delta: number) {
-        // Animate dinosaurs (simple idle animation)
+        // Animate dinosaurs with more natural movement
         this.dinosaurs.forEach((dino, index) => {
-            dino.object.position.y = 0.2 * Math.sin(Date.now() * 0.001 + index) + 0.2;
-            dino.object.rotation.y += 0.01 * Math.sin(Date.now() * 0.0005);
+            // Basic position animation if no loaded animations
+            if (!dino.animations || dino.animations.length === 0) {
+                // Bobbing movement
+                dino.object.position.y = 0.2 * Math.sin(Date.now() * 0.002 + index) + 0.2;
+                
+                // Swaying movement
+                dino.object.rotation.y += 0.01 * Math.sin(Date.now() * 0.001);
+            }
         });
         
         // Animate spaceships (hovering)
