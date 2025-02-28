@@ -16,10 +16,8 @@ export class Environment {
 
     init() {
         this.createGround();
-        this.createSandDunes();
         this.createPyramids();
         this.createSphinx();
-        this.createPalmTrees();
         this.addAtmosphericEffects();
         // Initialize the environment enhancements
         this.enhancements = new EnvironmentEnhancements(this.scene, this.loadingManager);
@@ -173,24 +171,6 @@ export class Environment {
         });
         
         this.scene.add(sphinxGroup);
-    }
-
-    createPalmTrees() {
-        const palmPositions = [
-            new THREE.Vector3(100, 0, 100),
-            new THREE.Vector3(-150, 0, 150),
-            new THREE.Vector3(200, 0, -100),
-            new THREE.Vector3(-200, 0, -150),
-            new THREE.Vector3(300, 0, 50)
-        ];
-
-        palmPositions.forEach((position) => {
-            const palmTree = this.createSinglePalmTree();
-            palmTree.position.copy(position);
-            palmTree.scale.set(5, 5, 5);
-            this.palmTrees.push(palmTree);
-            this.scene.add(palmTree);
-        });
     }
 
     createSinglePalmTree() {
