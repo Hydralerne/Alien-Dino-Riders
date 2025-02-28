@@ -27,7 +27,7 @@ export class Player {
     keys: { [key: string]: boolean } = {};
     verticalVelocity: number = 0;
     isGrounded: boolean = true;
-    jumpForce: number = 5;
+    jumpForce: number = 15;
     gravity: number = 9.8;
     mouseSensitivity: number = 0.002;
     mouseSmoothing: number = 0.1;    // Adjusted for smoother camera
@@ -185,17 +185,20 @@ export class Player {
             const sideAngle = Math.sin(this.animationTime * 2) * 0.1;
             this.limbs.leftArm.rotation.z = sideAngle;
             this.limbs.rightArm.rotation.z = -sideAngle;
-            
-            // Add slight torso bob but keep it at a fixed height
-            const baseHeight = this.currentVehicle ? 2 : 1.7;
-            const bobHeight = Math.abs(Math.sin(this.animationTime * 2)) * 0.1;
-            this.playerModel.position.y = baseHeight + bobHeight;
         } else {
             // Smoothly return to idle pose
             this.animationTime = 0;
             this.resetLimbPositions();
-            // Reset to base height when not moving
-            this.playerModel.position.y = this.currentVehicle ? 2 : 1.7;
+        }
+
+        // Add jump animation
+        if (!this.isGrounded) {
+            // Tuck legs up during jump
+            this.limbs.leftLeg.rotation.x = -0.3;
+            this.limbs.rightLeg.rotation.x = -0.3;
+            // Raise arms slightly
+            this.limbs.leftArm.rotation.x = -0.2;
+            this.limbs.rightArm.rotation.x = -0.2;
         }
     }
 
@@ -324,27 +327,48 @@ export class Player {
         if (this.keys['a']) moveDirection.sub(right);
         if (this.keys['d']) moveDirection.add(right);
         
+        // Handle jumping
+        if (this.keys[' '] && this.isGrounded) {
+            this.verticalVelocity = this.jumpForce;
+            this.isGrounded = false;
+        }
+
+        // Apply gravity
+        this.verticalVelocity -= this.gravity * delta;
+        
         if (moveDirection.length() > 0) {
             moveDirection.normalize();
             const speed = this.keys['shift'] ? this.moveSpeed * 2 : this.moveSpeed;
             moveDirection.multiplyScalar(speed * delta);
             
-            // Update player position
-            this.position.add(moveDirection);
-            this.position.y = 1.7; // Keep player at consistent height
+            // Update horizontal position
+            this.position.x += moveDirection.x;
+            this.position.z += moveDirection.z;
+        }
+
+        // Update vertical position
+        this.position.y += this.verticalVelocity * delta;
+
+        // Ground check
+        if (this.position.y <= 1.7) { // 1.7 is our ground level
+            this.position.y = 1.7;
+            this.verticalVelocity = 0;
+            this.isGrounded = true;
+        }
             
-            // Update player model
-            this.playerModel.position.copy(this.position);
+        // Update player model position without overriding the Y position
+        this.playerModel.position.x = this.position.x;
+        this.playerModel.position.z = this.position.z;
+        this.playerModel.position.y = this.position.y;
             
-            // Rotate player model to face movement direction
-            if (moveDirection.length() > 0) {
-                const angle = Math.atan2(moveDirection.x, moveDirection.z);
-                this.playerModel.rotation.y = THREE.MathUtils.lerp(
-                    this.playerModel.rotation.y,
-                    angle,
-                    0.2
-                );
-            }
+        // Rotate player model to face movement direction
+        if (moveDirection.length() > 0) {
+            const angle = Math.atan2(moveDirection.x, moveDirection.z);
+            this.playerModel.rotation.y = THREE.MathUtils.lerp(
+                this.playerModel.rotation.y,
+                angle,
+                0.2
+            );
         }
 
         // Always animate character when moving
