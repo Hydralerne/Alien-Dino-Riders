@@ -453,17 +453,274 @@ export class Vehicles {
             turnSpeed: 0.02
         });
     }
+    createStegosaurus(position: THREE.Vector3, scale: number = 1.5) {
+        const group = new THREE.Group();
+        
+        // Material with a slightly different color
+        const skinMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8B8B83,  // Gray with slight green tint
+            roughness: 0.9,
+            metalness: 0.1,
+        });
+
+        // Main body - larger and more rounded
+        const bodyGeometry = new THREE.CapsuleGeometry(3 * scale, 7 * scale, 8, 16);
+        const body = new THREE.Mesh(bodyGeometry, skinMaterial);
+        body.rotation.x = Math.PI / 2;
+        body.position.y = 4 * scale;
+        body.name = 'body';
+
+        // Thick legs
+        const legGeometry = new THREE.CapsuleGeometry(0.8 * scale, 3 * scale, 8, 8);
+        
+        // Front legs
+        const frontLeftLeg = new THREE.Mesh(legGeometry, skinMaterial);
+        frontLeftLeg.position.set(2.5 * scale, 2 * scale, 1.5 * scale);
+        frontLeftLeg.name = 'frontLeftLeg';
+        
+        const frontRightLeg = frontLeftLeg.clone();
+        frontRightLeg.position.z = -1.5 * scale;
+        frontRightLeg.name = 'frontRightLeg';
+        // Back legs
+        const backLeftLeg = new THREE.Mesh(legGeometry, skinMaterial);
+        backLeftLeg.position.set(-2.5 * scale, 2 * scale, 1.5 * scale);
+        backLeftLeg.name = 'backLeftLeg';
+        
+        const backRightLeg = backLeftLeg.clone();
+        backRightLeg.position.z = -1.5 * scale;
+        backRightLeg.name = 'backRightLeg';
+        // Head
+        const headGeometry = new THREE.BoxGeometry(2 * scale, 1.5 * scale, 1.5 * scale);
+        const head = new THREE.Mesh(headGeometry, skinMaterial);
+        head.position.set(4 * scale, 4 * scale, 0);
+        head.name = 'head';
+        // Distinctive plates on back
+        const plateGroup = new THREE.Group();
+        plateGroup.name = 'plates';
+        
+        for (let i = 0; i < 8; i++) {
+            const plateGeometry = new THREE.ConeGeometry(
+                0.8 * scale, 
+                2 * scale, 
+                4
+            );
+            const plate = new THREE.Mesh(plateGeometry, new THREE.MeshStandardMaterial({
+                color: 0x9B9B8B,
+                roughness: 0.7,
+                metalness: 0.2
+            }));
+            plate.position.set(
+                (i - 4) * 0.8 * scale,
+                1.5 * scale,
+                0
+            );
+            plate.rotation.x = Math.PI / 2;
+            plateGroup.add(plate);
+        }
+        plateGroup.position.y = 4 * scale;
+        
+        // Tail with spikes
+        const tailGroup = new THREE.Group();
+        tailGroup.name = 'tail';
+        
+        const tailGeometry = new THREE.CapsuleGeometry(1 * scale, 6 * scale, 8, 8);
+        const tail = new THREE.Mesh(tailGeometry, skinMaterial);
+        tail.position.set(-5 * scale, 0, 0);
+        tail.rotation.z = Math.PI / 2;
+        tailGroup.add(tail);
+        
+        // Add spikes to tail
+        for (let i = 0; i < 4; i++) {
+            const spikeGeometry = new THREE.ConeGeometry(0.4 * scale, 1.5 * scale, 4);
+            
+            const leftSpike = new THREE.Mesh(spikeGeometry, skinMaterial);
+            leftSpike.position.set(
+                -6 * scale - i * 0.8 * scale,
+                0.5 * scale,
+                1 * scale
+            );
+            leftSpike.rotation.z = Math.PI / 3;
+            
+            const rightSpike = leftSpike.clone();
+            rightSpike.position.z = -1 * scale;
+            
+            tailGroup.add(leftSpike, rightSpike);
+        }
+        
+        tailGroup.position.set(0, 4 * scale, 0);
+        // Assemble the stegosaurus
+        group.add(body, frontLeftLeg, frontRightLeg, backLeftLeg, backRightLeg, 
+                  head, plateGroup, tailGroup);
+        
+        // Position the entire dinosaur
+        group.position.copy(position);
+        
+        // Add shadows
+        group.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.castShadow = true;
+                object.receiveShadow = true;
+            }
+        });
+
+        this.scene.add(group);
+        this.dinosaurs.push({
+            model: group,
+            speed: 15,
+            turnSpeed: 0.03,
+            behaviors: ['graze', 'defend', 'patrol'],
+            type: 'stegosaurus'
+        });
+    }
+
+    createRaptor(position: THREE.Vector3, scale: number = 1.2) {
+        const group = new THREE.Group();
+        
+        // Better materials with realistic colors
+        const skinMaterial = new THREE.MeshStandardMaterial({
+            color: 0x556B2F,  // Dark olive green
+            roughness: 0.9,
+            metalness: 0.1,
+        });
+
+        // Main body - sleeker than T-Rex
+        const bodyGeometry = new THREE.CapsuleGeometry(1.5 * scale, 5 * scale, 8, 16);
+        const body = new THREE.Mesh(bodyGeometry, skinMaterial);
+        body.rotation.x = Math.PI / 3;
+        body.position.y = 4 * scale;
+        body.name = 'body';
+
+        // Slender legs
+        const thighGeometry = new THREE.CapsuleGeometry(0.6 * scale, 2.5 * scale, 8, 8);
+        const leftThigh = new THREE.Mesh(thighGeometry, skinMaterial);
+        leftThigh.position.set(0.8 * scale, 3 * scale, 1 * scale);
+        leftThigh.rotation.x = -Math.PI / 6;
+        leftThigh.name = 'leftThigh';
+        
+        const rightThigh = leftThigh.clone();
+        rightThigh.position.z = -1 * scale;
+        rightThigh.name = 'rightThigh';
+
+        // Lower legs with claws
+        const shinGeometry = new THREE.CapsuleGeometry(0.4 * scale, 2 * scale, 8, 8);
+        const leftShin = new THREE.Mesh(shinGeometry, skinMaterial);
+        leftShin.position.set(0.8 * scale, 1.5 * scale, 1 * scale);
+        leftShin.rotation.x = Math.PI / 6;
+        leftShin.name = 'leftShin';
+        
+        const rightShin = leftShin.clone();
+        rightShin.position.z = -1 * scale;
+        rightShin.name = 'rightShin';
+
+        // Detailed head with sharp teeth
+        const headGroup = new THREE.Group();
+        headGroup.name = 'head';
+        
+        // Elongated skull
+        const skullGeometry = new THREE.ConeGeometry(1 * scale, 3 * scale, 8);
+        const skull = new THREE.Mesh(skullGeometry, skinMaterial);
+        skull.rotation.x = -Math.PI / 2;
+        
+        // Eyes
+        const eyeMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x000000,
+            emissive: 0x330000
+        });
+        const eyeGeometry = new THREE.SphereGeometry(0.2 * scale);
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(0.5 * scale, 0.5 * scale, 0.4 * scale);
+        const rightEye = leftEye.clone();
+        rightEye.position.z = -0.4 * scale;
+
+        headGroup.add(skull, leftEye, rightEye);
+        headGroup.position.set(3 * scale, 5 * scale, 0);
+        headGroup.rotation.z = -Math.PI / 12;
+
+        // Arms
+        const armGeometry = new THREE.CapsuleGeometry(0.3 * scale, 1.5 * scale, 8, 8);
+        const leftArm = new THREE.Mesh(armGeometry, skinMaterial);
+        leftArm.position.set(2 * scale, 4 * scale, 0.8 * scale);
+        leftArm.rotation.z = Math.PI / 3;
+        leftArm.name = 'leftArm';
+        
+        const rightArm = leftArm.clone();
+        rightArm.position.z = -0.8 * scale;
+        rightArm.name = 'rightArm';
+
+        // Tail
+        const tailGroup = new THREE.Group();
+        tailGroup.name = 'tail';
+        const segments = 6;
+        for (let i = 0; i < segments; i++) {
+            const tailGeometry = new THREE.CapsuleGeometry(
+                (0.8 - i/segments * 0.6) * scale,
+                2 * scale,
+                8,
+                8
+            );
+            const tailSegment = new THREE.Mesh(tailGeometry, skinMaterial);
+            tailSegment.position.set(
+                -2 * scale - (i * 1.5 * scale),
+                3 * scale - (i * 0.2 * scale),
+                0
+            );
+            tailSegment.rotation.z = Math.PI / 2 + (i * Math.PI / 24);
+            tailGroup.add(tailSegment);
+        }
+
+        // Assemble the raptor
+        group.add(body, leftThigh, rightThigh, leftShin, rightShin, 
+                  headGroup, leftArm, rightArm, tailGroup);
+        
+        // Position the entire dinosaur
+        group.position.copy(position);
+        
+        // Add shadows
+        group.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                object.castShadow = true;
+                object.receiveShadow = true;
+            }
+        });
+
+        this.scene.add(group);
+        this.dinosaurs.push({
+            model: group,
+            speed: 35,
+            turnSpeed: 0.05,
+            behaviors: ['hunt', 'stalk', 'patrol'],
+            type: 'raptor'
+        });
+    }
 
     createDinosaurs() {
         const positions = [
             new THREE.Vector3(150, 2, 100),
             new THREE.Vector3(-180, 2, -120),
             new THREE.Vector3(200, 2, -200),
-            new THREE.Vector3(-150, 2, 150)
+            new THREE.Vector3(-150, 2, 150),
+            new THREE.Vector3(100, 2, -150),
+            new THREE.Vector3(-100, 2, 50),
+            new THREE.Vector3(50, 2, 200)
         ];
 
-        positions.forEach(pos => {
-            this.createRealisticTRex(pos, 1.8);
+        const dinoTypes = ['trex', 'raptor', 'stego'];
+
+        positions.forEach((pos, index) => {
+            const dinoType = dinoTypes[index % dinoTypes.length];
+            
+            switch(dinoType) {
+                case 'trex':
+                    this.createRealisticTRex(pos, 1.8);
+                    break;
+                case 'raptor':
+                    this.createRaptor(pos, 1.2);
+                    break;
+                case 'stego':
+                    this.createStegosaurus(pos, 1.5);
+                    break;
+            }
+            
             // Add slight color variations
             if(Math.random() > 0.5) {
                 pos.y += Math.random() * 2;
@@ -471,6 +728,191 @@ export class Vehicles {
         });
     }
 
+    animateDinosaurLegs(dino: any, delta: number) {
+        // Find leg parts to animate
+        if (!dino.legParts) {
+            dino.legParts = [];
+            dino.legAnimPhase = 0;
+            
+            // Find all leg meshes in the dinosaur model
+            dino.model.traverse((child: THREE.Object3D) => {
+                if (child instanceof THREE.Mesh && 
+                    (child.name.includes('leg') || 
+                     child.name.includes('Leg') || 
+                     child.name.includes('thigh') || 
+                     child.name.includes('shin'))) {
+                    dino.legParts.push(child);
+                }
+            });
+            
+            // If no named legs found, try to identify legs by position and size
+            if (dino.legParts.length === 0) {
+                dino.model.traverse((child: THREE.Object3D) => {
+                    if (child instanceof THREE.Mesh) {
+                        // Check if this could be a leg (positioned at the bottom of the model)
+                        const box = new THREE.Box3().setFromObject(child);
+                        const height = box.max.y - box.min.y;
+                        const width = box.max.x - box.min.x;
+                        
+                        // Legs are typically taller than wide and positioned at the bottom
+                        if (height > width * 1.5 && box.min.y < dino.model.position.y + 3) {
+                            dino.legParts.push(child);
+                        }
+                    }
+                });
+            }
+            
+            // Assign leg pairs (left/right)
+            if (dino.legParts.length >= 2) {
+                dino.leftLegs = [];
+                dino.rightLegs = [];
+                
+                // Sort by x position to separate left from right
+                const sortedLegs = [...dino.legParts].sort((a, b) => a.position.x - b.position.x);
+                
+                // Assign left/right based on position
+                for (let i = 0; i < sortedLegs.length; i++) {
+                    if (i < sortedLegs.length / 2) {
+                        dino.leftLegs.push(sortedLegs[i]);
+                    } else {
+                        dino.rightLegs.push(sortedLegs[i]);
+                    }
+                }
+            }
+        }
+        
+        // Animate leg movement
+        if (dino.leftLegs && dino.rightLegs) {
+            dino.legAnimPhase += delta * dino.speed * 0.2;
+            
+            // Sine wave animation for natural walking motion
+            const leftAngle = Math.sin(dino.legAnimPhase) * 0.25;
+            const rightAngle = Math.sin(dino.legAnimPhase + Math.PI) * 0.25;
+            
+            dino.leftLegs.forEach((leg: THREE.Object3D) => {
+                leg.rotation.x = leftAngle;
+            });
+            
+            dino.rightLegs.forEach((leg: THREE.Object3D) => {
+                leg.rotation.x = rightAngle;
+            });
+        }
+    }
+
+    update(delta: number) {
+        // Update dinosaur animations and behaviors
+        this.dinosaurs.forEach(dino => {
+            if (dino.mixer) {
+                dino.mixer.update(delta);
+            }
+            
+            // Update behaviors
+            const time = this.clock.getElapsedTime();
+            if (time - dino.lastBehaviorChange > 10) { // Change behavior every 10 seconds
+                dino.currentBehavior = dino.behaviors[Math.floor(Math.random() * dino.behaviors.length)];
+                dino.lastBehaviorChange = time;
+                
+                // Play corresponding animation
+                if (dino.animations[dino.currentBehavior]) {
+                    const currentAnimations = Object.values(dino.animations);
+                    currentAnimations.forEach((anim) => {
+                        if (anim instanceof THREE.AnimationAction) {
+                            anim.stop();
+                        }
+                    });
+                    dino.animations[dino.currentBehavior].play();
+                }
+                
+                // Play sound occasionally
+                if (dino.sound && Math.random() < 0.3) {
+                    dino.sound.play();
+                }
+            }
+            
+            // Update position based on behavior
+            this.updateDinosaurBehavior(dino, delta);
+        });
+        
+        // Update spaceships
+        this.spaceships.forEach(ship => {
+            if (ship.mixer) {
+                ship.mixer.update(delta);
+            }
+            
+            // Make spaceships hover and rotate slowly
+            const time = this.clock.getElapsedTime();
+            ship.object.position.y += Math.sin(time * 0.5) * 0.05;
+            ship.object.rotation.y += delta * 0.1;
+        });
+    }
+
+    updateDinosaurBehavior(dino: any, delta: number) {
+        switch (dino.currentBehavior) {
+            case 'patrol':
+                // Move in a circular pattern
+                const time = this.clock.getElapsedTime();
+                const radius = 50;
+                const speed = 0.5;
+                dino.object.position.x += Math.cos(time * speed) * delta * 10;
+                dino.object.position.z += Math.sin(time * speed) * delta * 10;
+                break;
+                
+            case 'hunt':
+                // Move towards nearest other dinosaur
+                const target = this.findNearestDinosaur(dino.object.position, dino);
+                if (target) {
+                    const direction = target.position.clone().sub(dino.object.position).normalize();
+                    dino.object.position.add(direction.multiplyScalar(delta * dino.speed));
+                    dino.object.lookAt(target.position);
+                }
+                break;
+                
+            case 'graze':
+                // Slight random movement
+                if (Math.random() < 0.05) {
+                    dino.object.rotation.y += (Math.random() - 0.5) * Math.PI * 0.25;
+                }
+                dino.object.position.add(
+                    new THREE.Vector3(0, 0, -1)
+                        .applyQuaternion(dino.object.quaternion)
+                        .multiplyScalar(delta * dino.speed * 0.2)
+                );
+                break;
+        }
+    }
+
+    findNearestDinosaur(position: THREE.Vector3, excludeDino: any) {
+        let nearest: THREE.Object3D | null = null;
+        let minDistance = Infinity;
+        
+        this.dinosaurs.forEach(dino => {
+            if (dino === excludeDino) return;
+            
+            const distance = position.distanceTo(dino.object.position);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = dino.object;
+            }
+        });
+        
+        return nearest;
+    }
+
+    getNearestVehicle(playerPosition: THREE.Vector3, type: 'dinosaur' | 'spaceship') {
+        const vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
+        let nearestVehicle = null;
+        let minDistance = 20; // Increased interaction distance
+        
+        vehicles.forEach(vehicle => {
+            const distance = playerPosition.distanceTo(vehicle.object.position);
+            if (distance < minDistance) {
+                nearestVehicle = vehicle;
+                minDistance = distance;
+            }
+        });
+        
+        return nearestVehicle;
+    }
     createSpaceships() {
         // Create spaceships hovering around the pyramids (not inside)
         const shipPositions = [
@@ -565,115 +1007,5 @@ export class Vehicles {
                 turnSpeed: 3
             });
         });
-    }
-
-    update(delta: number) {
-        // Update dinosaur animations and behaviors
-        this.dinosaurs.forEach(dino => {
-            if (dino.mixer) {
-                dino.mixer.update(delta);
-            }
-            
-            // Update behaviors
-            const time = this.clock.getElapsedTime();
-            if (time - dino.lastBehaviorChange > 10) { // Change behavior every 10 seconds
-                dino.currentBehavior = dino.behaviors[Math.floor(Math.random() * dino.behaviors.length)];
-                dino.lastBehaviorChange = time;
-                
-                // Play corresponding animation
-                if (dino.animations[dino.currentBehavior]) {
-                    const currentAnimations = Object.values(dino.animations);
-                    currentAnimations.forEach((anim) => {
-                        if (anim instanceof THREE.AnimationAction) {
-                            anim.stop();
-                        }
-                    });
-                    dino.animations[dino.currentBehavior].play();
-                }
-                
-                // Play sound occasionally
-                if (Math.random() < 0.3) {
-                    dino.sound.play();
-                }
-            }
-            
-            // Update position based on behavior
-            this.updateDinosaurBehavior(dino, delta);
-        });
-        
-        // Update spaceships
-        this.spaceships.forEach(ship => {
-            if (ship.mixer) {
-                ship.mixer.update(delta);
-            }
-        });
-    }
-
-    updateDinosaurBehavior(dino: any, delta: number) {
-        switch (dino.currentBehavior) {
-            case 'patrol':
-                // Move in a circular pattern
-                const time = this.clock.getElapsedTime();
-                const radius = 50;
-                const speed = 0.5;
-                dino.object.position.x += Math.cos(time * speed) * delta * 10;
-                dino.object.position.z += Math.sin(time * speed) * delta * 10;
-                break;
-                
-            case 'hunt':
-                // Move towards nearest other dinosaur
-                const target = this.findNearestDinosaur(dino.object.position, dino);
-                if (target) {
-                    const direction = target.position.clone().sub(dino.object.position).normalize();
-                    dino.object.position.add(direction.multiplyScalar(delta * dino.speed));
-                    dino.object.lookAt(target.position);
-                }
-                break;
-                
-            case 'graze':
-                // Slight random movement
-                if (Math.random() < 0.05) {
-                    dino.object.rotation.y += (Math.random() - 0.5) * Math.PI * 0.25;
-                }
-                dino.object.position.add(
-                    new THREE.Vector3(0, 0, -1)
-                        .applyQuaternion(dino.object.quaternion)
-                        .multiplyScalar(delta * dino.speed * 0.2)
-                );
-                break;
-        }
-    }
-
-    findNearestDinosaur(position: THREE.Vector3, excludeDino: any) {
-        let nearest: THREE.Object3D | null = null;
-        let minDistance = Infinity;
-        
-        this.dinosaurs.forEach(dino => {
-            if (dino === excludeDino) return;
-            
-            const distance = position.distanceTo(dino.object.position);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearest = dino.object;
-            }
-        });
-        
-        return nearest;
-    }
-
-    getNearestVehicle(playerPosition: THREE.Vector3, type: 'dinosaur' | 'spaceship') {
-        const vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
-        let nearestVehicle = null;
-        let minDistance = 20; // Increased interaction distance
-        
-        vehicles.forEach(vehicle => {
-            const distance = playerPosition.distanceTo(vehicle.object.position);
-            if (distance < minDistance) {
-                nearestVehicle = vehicle;
-                minDistance = distance;
-            }
-        });
-        
-        return nearestVehicle;
     }
 }
