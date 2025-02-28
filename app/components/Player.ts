@@ -169,7 +169,7 @@ export class Player {
     animateCharacter(delta: number) {
         if (this.isMoving()) {
             // Faster animation when running
-            const animationSpeed = this.keys['shift'] ? 8 : 5;
+            const animationSpeed = this.keys['ShiftLeft'] || this.keys['ShiftRight'] ? 8 : 5;
             this.animationTime += delta * animationSpeed;
             
             // Calculate swing angles with better range of motion
@@ -221,9 +221,9 @@ export class Player {
             this.isMouseLocked = document.pointerLockElement !== null;
         });
 
-        // Keyboard controls
-        window.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true);
-        window.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false);
+        // Keyboard controls using key codes
+        window.addEventListener('keydown', (e) => this.keys[e.code] = true);
+        window.addEventListener('keyup', (e) => this.keys[e.code] = false);
 
         // Vehicle selection
         const dinoButton = document.getElementById('select-dinosaur');
@@ -321,14 +321,14 @@ export class Player {
             .setY(0)  // Keep movement on ground plane
             .normalize();
 
-        // Apply movement based on key presses
-        if (this.keys['w']) moveDirection.add(forward);
-        if (this.keys['s']) moveDirection.sub(forward);
-        if (this.keys['a']) moveDirection.sub(right);
-        if (this.keys['d']) moveDirection.add(right);
+        // Apply movement based on key codes
+        if (this.keys['KeyW']) moveDirection.add(forward);
+        if (this.keys['KeyS']) moveDirection.sub(forward);
+        if (this.keys['KeyA']) moveDirection.sub(right);
+        if (this.keys['KeyD']) moveDirection.add(right);
         
         // Handle jumping
-        if (this.keys[' '] && this.isGrounded) {
+        if (this.keys['Space'] && this.isGrounded) {
             this.verticalVelocity = this.jumpForce;
             this.isGrounded = false;
         }
@@ -338,7 +338,7 @@ export class Player {
         
         if (moveDirection.length() > 0) {
             moveDirection.normalize();
-            const speed = this.keys['shift'] ? this.moveSpeed * 2 : this.moveSpeed;
+            const speed = this.keys['ShiftLeft'] || this.keys['ShiftRight'] ? this.moveSpeed * 2 : this.moveSpeed;
             moveDirection.multiplyScalar(speed * delta);
             
             // Update horizontal position
@@ -392,10 +392,10 @@ export class Player {
         // Calculate movement direction
         this.direction.set(0, 0, 0);
         
-        if (this.keys['w']) this.direction.add(forward);
-        if (this.keys['s']) this.direction.sub(forward);
-        if (this.keys['a']) this.direction.sub(right);
-        if (this.keys['d']) this.direction.add(right);
+        if (this.keys['KeyW']) this.direction.add(forward);
+        if (this.keys['KeyS']) this.direction.sub(forward);
+        if (this.keys['KeyA']) this.direction.sub(right);
+        if (this.keys['KeyD']) this.direction.add(right);
         
         if (this.direction.length() > 0) {
             this.direction.normalize();
@@ -403,7 +403,7 @@ export class Player {
 
         // Apply movement with smooth acceleration
         const speed = this.currentVehicle.type === 'spaceship' ? 60 : 40;
-        const acceleration = this.keys['shift'] ? speed * 2.5 : speed;
+        const acceleration = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) ? speed * 2.5 : speed;
         
         this.velocity.add(this.direction.multiplyScalar(acceleration * delta));
         
@@ -412,10 +412,10 @@ export class Player {
 
         // Handle vertical movement for spaceships
         if (this.currentVehicle.type === 'spaceship') {
-            if (this.keys[' ']) {
+            if (this.keys['Space']) {
                 this.targetPosition.y += speed * delta;
             }
-            if (this.keys['control']) {
+            if (this.keys['ControlLeft'] || this.keys['ControlRight']) {
                 this.targetPosition.y -= speed * delta;
             }
             this.targetPosition.y = Math.max(5, Math.min(100, this.targetPosition.y));
@@ -431,6 +431,6 @@ export class Player {
     }
 
     isMoving(): boolean {
-        return this.keys['w'] || this.keys['s'] || this.keys['a'] || this.keys['d'];
+        return this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
     }
 } 
