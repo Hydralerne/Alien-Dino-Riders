@@ -453,6 +453,42 @@ export class Vehicles {
             turnSpeed: 0.02
         });
     }
+
+    createDinosaurs() {
+        const positions = [
+            new THREE.Vector3(150, 2, 100),
+            new THREE.Vector3(-180, 2, -120),
+            new THREE.Vector3(200, 2, -200),
+            new THREE.Vector3(-150, 2, 150),
+            new THREE.Vector3(100, 2, -150),
+            new THREE.Vector3(-100, 2, 50),
+            new THREE.Vector3(50, 2, 200)
+        ];
+
+        const dinoTypes = ['trex', 'raptor', 'stego'];
+
+        positions.forEach((pos, index) => {
+            const dinoType = dinoTypes[index % dinoTypes.length];
+            
+            switch(dinoType) {
+                case 'trex':
+                    this.createRealisticTRex(pos, 1.8);
+                    break;
+                case 'raptor':
+                    this.createRaptor(pos, 1.2);
+                    break;
+                case 'stego':
+                    this.createStegosaurus(pos, 1.5);
+                    break;
+            }
+            
+            // Add slight color variations
+            if(Math.random() > 0.5) {
+                pos.y += Math.random() * 2;
+            }
+        });
+    }
+
     createStegosaurus(position: THREE.Vector3, scale: number = 1.5) {
         const group = new THREE.Group();
         
@@ -481,6 +517,7 @@ export class Vehicles {
         const frontRightLeg = frontLeftLeg.clone();
         frontRightLeg.position.z = -1.5 * scale;
         frontRightLeg.name = 'frontRightLeg';
+
         // Back legs
         const backLeftLeg = new THREE.Mesh(legGeometry, skinMaterial);
         backLeftLeg.position.set(-2.5 * scale, 2 * scale, 1.5 * scale);
@@ -489,11 +526,13 @@ export class Vehicles {
         const backRightLeg = backLeftLeg.clone();
         backRightLeg.position.z = -1.5 * scale;
         backRightLeg.name = 'backRightLeg';
+
         // Head
         const headGeometry = new THREE.BoxGeometry(2 * scale, 1.5 * scale, 1.5 * scale);
         const head = new THREE.Mesh(headGeometry, skinMaterial);
         head.position.set(4 * scale, 4 * scale, 0);
         head.name = 'head';
+
         // Distinctive plates on back
         const plateGroup = new THREE.Group();
         plateGroup.name = 'plates';
@@ -548,6 +587,7 @@ export class Vehicles {
         }
         
         tailGroup.position.set(0, 4 * scale, 0);
+
         // Assemble the stegosaurus
         group.add(body, frontLeftLeg, frontRightLeg, backLeftLeg, backRightLeg, 
                   head, plateGroup, tailGroup);
@@ -572,6 +612,7 @@ export class Vehicles {
             type: 'stegosaurus'
         });
     }
+
 
     createRaptor(position: THREE.Vector3, scale: number = 1.2) {
         const group = new THREE.Group();
@@ -693,40 +734,7 @@ export class Vehicles {
         });
     }
 
-    createDinosaurs() {
-        const positions = [
-            new THREE.Vector3(150, 2, 100),
-            new THREE.Vector3(-180, 2, -120),
-            new THREE.Vector3(200, 2, -200),
-            new THREE.Vector3(-150, 2, 150),
-            new THREE.Vector3(100, 2, -150),
-            new THREE.Vector3(-100, 2, 50),
-            new THREE.Vector3(50, 2, 200)
-        ];
 
-        const dinoTypes = ['trex', 'raptor', 'stego'];
-
-        positions.forEach((pos, index) => {
-            const dinoType = dinoTypes[index % dinoTypes.length];
-            
-            switch(dinoType) {
-                case 'trex':
-                    this.createRealisticTRex(pos, 1.8);
-                    break;
-                case 'raptor':
-                    this.createRaptor(pos, 1.2);
-                    break;
-                case 'stego':
-                    this.createStegosaurus(pos, 1.5);
-                    break;
-            }
-            
-            // Add slight color variations
-            if(Math.random() > 0.5) {
-                pos.y += Math.random() * 2;
-            }
-        });
-    }
 
     animateDinosaurLegs(dino: any, delta: number) {
         // Find leg parts to animate
@@ -799,120 +807,7 @@ export class Vehicles {
         }
     }
 
-    update(delta: number) {
-        // Update dinosaur animations and behaviors
-        this.dinosaurs.forEach(dino => {
-            if (dino.mixer) {
-                dino.mixer.update(delta);
-            }
-            
-            // Update behaviors
-            const time = this.clock.getElapsedTime();
-            if (time - dino.lastBehaviorChange > 10) { // Change behavior every 10 seconds
-                dino.currentBehavior = dino.behaviors[Math.floor(Math.random() * dino.behaviors.length)];
-                dino.lastBehaviorChange = time;
-                
-                // Play corresponding animation
-                if (dino.animations[dino.currentBehavior]) {
-                    const currentAnimations = Object.values(dino.animations);
-                    currentAnimations.forEach((anim) => {
-                        if (anim instanceof THREE.AnimationAction) {
-                            anim.stop();
-                        }
-                    });
-                    dino.animations[dino.currentBehavior].play();
-                }
-                
-                // Play sound occasionally
-                if (dino.sound && Math.random() < 0.3) {
-                    dino.sound.play();
-                }
-            }
-            
-            // Update position based on behavior
-            this.updateDinosaurBehavior(dino, delta);
-        });
-        
-        // Update spaceships
-        this.spaceships.forEach(ship => {
-            if (ship.mixer) {
-                ship.mixer.update(delta);
-            }
-            
-            // Make spaceships hover and rotate slowly
-            const time = this.clock.getElapsedTime();
-            ship.object.position.y += Math.sin(time * 0.5) * 0.05;
-            ship.object.rotation.y += delta * 0.1;
-        });
-    }
 
-    updateDinosaurBehavior(dino: any, delta: number) {
-        switch (dino.currentBehavior) {
-            case 'patrol':
-                // Move in a circular pattern
-                const time = this.clock.getElapsedTime();
-                const radius = 50;
-                const speed = 0.5;
-                dino.object.position.x += Math.cos(time * speed) * delta * 10;
-                dino.object.position.z += Math.sin(time * speed) * delta * 10;
-                break;
-                
-            case 'hunt':
-                // Move towards nearest other dinosaur
-                const target = this.findNearestDinosaur(dino.object.position, dino);
-                if (target) {
-                    const direction = target.position.clone().sub(dino.object.position).normalize();
-                    dino.object.position.add(direction.multiplyScalar(delta * dino.speed));
-                    dino.object.lookAt(target.position);
-                }
-                break;
-                
-            case 'graze':
-                // Slight random movement
-                if (Math.random() < 0.05) {
-                    dino.object.rotation.y += (Math.random() - 0.5) * Math.PI * 0.25;
-                }
-                dino.object.position.add(
-                    new THREE.Vector3(0, 0, -1)
-                        .applyQuaternion(dino.object.quaternion)
-                        .multiplyScalar(delta * dino.speed * 0.2)
-                );
-                break;
-        }
-    }
-
-    findNearestDinosaur(position: THREE.Vector3, excludeDino: any) {
-        let nearest: THREE.Object3D | null = null;
-        let minDistance = Infinity;
-        
-        this.dinosaurs.forEach(dino => {
-            if (dino === excludeDino) return;
-            
-            const distance = position.distanceTo(dino.object.position);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearest = dino.object;
-            }
-        });
-        
-        return nearest;
-    }
-
-    getNearestVehicle(playerPosition: THREE.Vector3, type: 'dinosaur' | 'spaceship') {
-        const vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
-        let nearestVehicle = null;
-        let minDistance = 20; // Increased interaction distance
-        
-        vehicles.forEach(vehicle => {
-            const distance = playerPosition.distanceTo(vehicle.object.position);
-            if (distance < minDistance) {
-                nearestVehicle = vehicle;
-                minDistance = distance;
-            }
-        });
-        
-        return nearestVehicle;
-    }
     createSpaceships() {
         // Create spaceships hovering around the pyramids (not inside)
         const shipPositions = [
@@ -1007,5 +902,115 @@ export class Vehicles {
                 turnSpeed: 3
             });
         });
+    }
+
+    update(delta: number) {
+        // Update dinosaur animations and behaviors
+        this.dinosaurs.forEach(dino => {
+            if (dino.mixer) {
+                dino.mixer.update(delta);
+            }
+            
+            // Update behaviors
+            const time = this.clock.getElapsedTime();
+            if (time - dino.lastBehaviorChange > 10) { // Change behavior every 10 seconds
+                dino.currentBehavior = dino.behaviors[Math.floor(Math.random() * dino.behaviors.length)];
+                dino.lastBehaviorChange = time;
+                
+                // Play corresponding animation
+                if (dino.animations[dino.currentBehavior]) {
+                    const currentAnimations = Object.values(dino.animations);
+                    currentAnimations.forEach((anim) => {
+                        if (anim instanceof THREE.AnimationAction) {
+                            anim.stop();
+                        }
+                    });
+                    dino.animations[dino.currentBehavior].play();
+                }
+                
+                // Play sound occasionally
+                if (Math.random() < 0.3) {
+                    dino.sound.play();
+                }
+            }
+            
+            // Update position based on behavior
+            this.updateDinosaurBehavior(dino, delta);
+        });
+        
+        // Update spaceships
+        this.spaceships.forEach(ship => {
+            if (ship.mixer) {
+                ship.mixer.update(delta);
+            }
+        });
+    }
+
+    updateDinosaurBehavior(dino: any, delta: number) {
+        switch (dino.currentBehavior) {
+            case 'patrol':
+                // Move in a circular pattern
+                const time = this.clock.getElapsedTime();
+                const radius = 50;
+                const speed = 0.5;
+                dino.object.position.x += Math.cos(time * speed) * delta * 10;
+                dino.object.position.z += Math.sin(time * speed) * delta * 10;
+                break;
+                
+            case 'hunt':
+                // Move towards nearest other dinosaur
+                const target = this.findNearestDinosaur(dino.object.position, dino);
+                if (target) {
+                    const direction = target.position.clone().sub(dino.object.position).normalize();
+                    dino.object.position.add(direction.multiplyScalar(delta * dino.speed));
+                    dino.object.lookAt(target.position);
+                }
+                break;
+                
+            case 'graze':
+                // Slight random movement
+                if (Math.random() < 0.05) {
+                    dino.object.rotation.y += (Math.random() - 0.5) * Math.PI * 0.25;
+                }
+                dino.object.position.add(
+                    new THREE.Vector3(0, 0, -1)
+                        .applyQuaternion(dino.object.quaternion)
+                        .multiplyScalar(delta * dino.speed * 0.2)
+                );
+                break;
+        }
+    }
+
+    findNearestDinosaur(position: THREE.Vector3, excludeDino: any): THREE.Object3D | null {
+        let nearest: THREE.Object3D | null = null;
+        let minDistance = Infinity;
+        
+        this.dinosaurs.forEach(dino => {
+            if (dino === excludeDino) return;
+            
+            const distance = position.distanceTo(dino.object.position);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = dino.object;
+            }
+        });
+        
+        return nearest;
+    }
+
+    getNearestVehicle(playerPosition: THREE.Vector3, type: 'dinosaur' | 'spaceship') {
+        const vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
+        let nearestVehicle = null;
+        let minDistance = 20; // Increased interaction distance
+        
+        vehicles.forEach(vehicle => {
+            const distance = playerPosition.distanceTo(vehicle.object.position);
+            if (distance < minDistance) {
+                nearestVehicle = vehicle;
+                minDistance = distance;
+            }
+        });
+        
+        return nearestVehicle;
     }
 }
