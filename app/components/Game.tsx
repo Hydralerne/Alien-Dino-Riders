@@ -118,7 +118,7 @@ export default function Game() {
         vehiclesRef.current = vehicles;
 
         // Initialize player with better controls
-        const player = new Player(scene, camera, vehicles);
+        const player = new Player(scene, camera, vehicles, environment);
         playerRef.current = player;
 
         // Animation loop

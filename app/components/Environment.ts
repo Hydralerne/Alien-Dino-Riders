@@ -3,6 +3,7 @@ import * as THREE from 'three';
 export class Environment {
     scene: THREE.Scene;
     loadingManager: THREE.LoadingManager;
+    pyramids: THREE.Mesh[] = [];
 
     constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
         this.scene = scene;
@@ -32,34 +33,60 @@ export class Environment {
     }
 
     createPyramids() {
-        // Create the three main pyramids of Giza
         const pyramidPositions = [
-            new THREE.Vector3(0, 0, 0),          // Great Pyramid of Giza (centered)
-            new THREE.Vector3(-150, 0, 100),     // Pyramid of Khafre (moved further)
-            new THREE.Vector3(-300, 0, 200)      // Pyramid of Menkaure (moved further)
+            new THREE.Vector3(0, 0, 0),          // Great Pyramid
+            new THREE.Vector3(-400, 0, -250),    // Khafre
+            new THREE.Vector3(-800, 0, -500)     // Menkaure
         ];
         
-        const pyramidSizes = [200, 180, 100];  // Increased sizes for more prominence
+        const pyramidSizes = [
+            { height: 280, baseWidth: 440 },     // Great Pyramid
+            { height: 260, baseWidth: 410 },     // Khafre
+            { height: 140, baseWidth: 220 }      // Menkaure
+        ];
         
         pyramidPositions.forEach((position, index) => {
-            const height = pyramidSizes[index];
-            const base = height * 1.7;  // Approximate base to height ratio
+            const { height, baseWidth } = pyramidSizes[index];
             
-            const pyramidGeometry = new THREE.ConeGeometry(base, height, 4);
+            const pyramidGeometry = new THREE.ConeGeometry(
+                baseWidth / 2,    // radius
+                height,           // height
+                4,               // sides
+                24              // heightSegments
+            );
+            
             const pyramidMaterial = new THREE.MeshStandardMaterial({
-                color: 0xF4E6CC,  // Light limestone color
-                roughness: 0.8,
-                metalness: 0.1
+                color: 0xE8DCC5,   // Limestone color
+                roughness: 0.75,
+                metalness: 0.1,
             });
             
             const pyramid = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+            
+            // Only horizontal block lines
+            const blockHeight = height / 24;
+            for(let i = 0; i <= 24; i++) {
+                const y = (i * blockHeight) - (height / 2);
+                const lineGeometry = new THREE.CircleGeometry(
+                    baseWidth/2 * (1 - (i/24)),
+                    4
+                );
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: 0x8B7355,
+                    linewidth: 1
+                });
+                const line = new THREE.LineLoop(lineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.y = y;
+                pyramid.add(line);
+            }
+            
             pyramid.position.copy(position);
             pyramid.castShadow = true;
             pyramid.receiveShadow = true;
-            
-            // Rotate to align with cardinal directions
             pyramid.rotation.y = Math.PI / 4;
             
+            this.pyramids.push(pyramid);
             this.scene.add(pyramid);
         });
     }
@@ -91,9 +118,9 @@ export class Environment {
         face.position.set(0, 8, 22);
         sphinxGroup.add(face);
         
-        // Position the entire Sphinx
-        sphinxGroup.position.set(100, 4, -100);  // Moved further from pyramids
-        sphinxGroup.rotation.y = -Math.PI / 6;
+        // Position the Sphinx outside and beside the pyramids
+        sphinxGroup.position.set(200, 4, 50);  // Moved to the right side of the pyramids
+        sphinxGroup.rotation.y = -Math.PI / 4;  // Facing towards the pyramids
         
         // Add shadows
         sphinxGroup.traverse((child) => {
@@ -104,5 +131,14 @@ export class Environment {
         });
         
         this.scene.add(sphinxGroup);
+    }
+
+    // Method to check collision with pyramids using the actual pyramid meshes
+    checkPyramidCollision(position: THREE.Vector3): { collides: boolean; surfaceY: number } {
+        // No collision detection - player can walk freely
+        return {
+            collides: false,
+            surfaceY: 0
+        };
     }
 } 
