@@ -43,6 +43,7 @@ export class Vehicles {
     init() {
         this.createDinosaurs();
         this.createSpaceships();
+        this.createRideableSpaceships();
     }
 
     getDinosaurTypes(): DinosaurType[] {
@@ -900,6 +901,152 @@ export class Vehicles {
                 name: shipTypes[i],
                 speed: 30,
                 turnSpeed: 3
+            });
+        });
+    }
+
+    createRideableSpaceships() {
+        // Create spaceships on the ground that players can ride
+        const groundShipPositions = [
+            new THREE.Vector3(400, 2, 400),    // Far corner
+            new THREE.Vector3(-400, 2, -400),  // Opposite corner
+            new THREE.Vector3(400, 2, -400),   // Another corner
+            new THREE.Vector3(-400, 2, 400)    // Last corner
+        ];
+        
+        const shipColors = [0xC0C0C0, 0x4169E1, 0x9400D3, 0xFFD700];
+        const shipTypes = ['Interceptor', 'Battlecruiser', 'CommandShip', 'Explorer'];
+        
+        groundShipPositions.forEach((position, i) => {
+            // Create much larger spaceship model
+            const scale = 5; // Make ground spaceships significantly larger
+            
+            // Enhanced ship geometry for rideable ships
+            const bodyGeometry = new THREE.CapsuleGeometry(4 * scale, 8 * scale, 16, 8);
+            const cockpitGeometry = new THREE.SphereGeometry(2.5 * scale, 32, 32);
+            const wingGeometry = new THREE.BoxGeometry(12 * scale, 0.5 * scale, 4 * scale);
+            const engineGeometry = new THREE.CylinderGeometry(1 * scale, 1.5 * scale, 2 * scale, 16);
+            
+            const shipMaterial = new THREE.MeshStandardMaterial({ 
+                color: shipColors[i],
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            const glowMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00FFFF,
+                emissive: 0x00FFFF,
+                emissiveIntensity: 2,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            // Create enhanced spaceship parts
+            const body = new THREE.Mesh(bodyGeometry, shipMaterial);
+            body.rotation.x = Math.PI / 2; // Lay the capsule on its side
+            
+            const cockpit = new THREE.Mesh(cockpitGeometry, new THREE.MeshStandardMaterial({
+                color: 0x00BFFF,
+                metalness: 0.9,
+                roughness: 0.1,
+                transparent: true,
+                opacity: 0.8
+            }));
+            cockpit.position.set(3 * scale, 2 * scale, 0);
+            
+            // Create wings with more detail
+            const wingL = new THREE.Mesh(wingGeometry, shipMaterial);
+            wingL.position.set(-2 * scale, 0, -6 * scale);
+            
+            const wingR = new THREE.Mesh(wingGeometry, shipMaterial);
+            wingR.position.set(-2 * scale, 0, 6 * scale);
+            
+            // Add wing fins
+            const finGeometry = new THREE.BoxGeometry(4 * scale, 0.3 * scale, 1 * scale);
+            const finL = new THREE.Mesh(finGeometry, shipMaterial);
+            finL.position.set(-4 * scale, 0, -8 * scale);
+            finL.rotation.y = Math.PI / 4;
+            
+            const finR = new THREE.Mesh(finGeometry, shipMaterial);
+            finR.position.set(-4 * scale, 0, 8 * scale);
+            finR.rotation.y = -Math.PI / 4;
+            
+            // Enhanced engines
+            const engineL = new THREE.Mesh(engineGeometry, shipMaterial);
+            engineL.position.set(-5 * scale, 0, -3 * scale);
+            
+            const engineR = new THREE.Mesh(engineGeometry, shipMaterial);
+            engineR.position.set(-5 * scale, 0, 3 * scale);
+            
+            // Add engine glow effects
+            const engineGlowL = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.8 * scale, 1.2 * scale, 1 * scale, 16),
+                glowMaterial
+            );
+            engineGlowL.position.set(-6 * scale, 0, -3 * scale);
+            
+            const engineGlowR = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.8 * scale, 1.2 * scale, 1 * scale, 16),
+                glowMaterial
+            );
+            engineGlowR.position.set(-6 * scale, 0, 3 * scale);
+            
+            // Create landing gear
+            const legGeometry = new THREE.CylinderGeometry(0.3 * scale, 0.3 * scale, 2 * scale);
+            const legMaterial = new THREE.MeshStandardMaterial({
+                color: 0x404040,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            const legs: THREE.Mesh[] = [];
+            const legPositions: [number, number, number][] = [
+                [-2 * scale, -2 * scale, -4 * scale],
+                [-2 * scale, -2 * scale, 4 * scale],
+                [2 * scale, -2 * scale, -4 * scale],
+                [2 * scale, -2 * scale, 4 * scale]
+            ];
+            
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, legMaterial);
+                leg.position.set(...pos);
+                legs.push(leg);
+            });
+            
+            // Create spaceship group
+            const spaceship = new THREE.Group();
+            spaceship.add(
+                body, cockpit, 
+                wingL, wingR, 
+                finL, finR,
+                engineL, engineR, 
+                engineGlowL, engineGlowR
+            );
+            
+            // Add legs separately
+            legs.forEach(leg => spaceship.add(leg));
+            
+            // Position spaceship
+            spaceship.position.copy(position);
+            spaceship.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            
+            this.scene.add(spaceship);
+            
+            // Add to spaceships array with rideable flag
+            this.spaceships.push({
+                object: spaceship,
+                type: 'spaceship',
+                name: shipTypes[i],
+                speed: 50,  // Faster speed for rideable ships
+                turnSpeed: 2.5,
+                isRideable: true,
+                maxHeight: 200,  // Maximum flying height
+                minHeight: 2     // Minimum flying height (ground level)
             });
         });
     }
