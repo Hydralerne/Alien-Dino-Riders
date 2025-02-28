@@ -274,21 +274,74 @@ export class Player {
     }
 
     mountVehicle(vehicle: any) {
-        this.currentVehicle = vehicle;
-        this.moveSpeed = vehicle.type === 'spaceship' ? 60 : 40;
-        this.turnSpeed = vehicle.type === 'spaceship' ? 3 : 2;
-        this.playerModel.visible = false;
+        // Dismount current vehicle first if any
+        if (this.currentVehicle) {
+            this.dismountVehicle();
+        }
 
-        this.position.copy(vehicle.object.position);
-        this.targetPosition.copy(this.position);
+        this.currentVehicle = vehicle;
+        
+        if (vehicle.type === 'dinosaur') {
+            // Set appropriate dinosaur riding parameters
+            this.moveSpeed = vehicle.speed || 40;
+            this.turnSpeed = vehicle.turnSpeed || 2;
+            
+            // Calculate mounting position on dinosaur's back
+            const mountOffset = new THREE.Vector3(0, vehicle.height || 5, -1); // Added Z offset
+            this.position.copy(vehicle.model.position).add(mountOffset);
+            
+            // Make player model visible and positioned correctly
+            this.playerModel.visible = true;
+            this.playerModel.position.copy(this.position);
+            
+            // Scale player model slightly smaller when riding
+            this.playerModel.scale.set(0.8, 0.8, 0.8);
+            
+            // Adjust player model rotation to face forward
+            this.playerModel.rotation.y = vehicle.model.rotation.y;
+            
+            // Store mounting data
+            this.currentVehicle.mountOffset = mountOffset;
+            this.currentVehicle.originalHeight = vehicle.model.position.y;
+            
+            // Update target position
+            this.targetPosition.copy(this.position);
+        } else {
+            // Spaceship mounting logic (unchanged)
+            this.moveSpeed = 60;
+            this.turnSpeed = 3;
+            this.playerModel.visible = false;
+            this.position.copy(vehicle.object.position);
+            this.targetPosition.copy(this.position);
+        }
     }
 
     dismountVehicle() {
+        if (!this.currentVehicle) return;
+
+        if (this.currentVehicle.type === 'dinosaur') {
+            // Reset player model scale
+            this.playerModel.scale.set(1, 1, 1);
+            
+            // Place player slightly in front of dinosaur
+            const dismountOffset = new THREE.Vector3(0, 0, 2);
+            dismountOffset.applyQuaternion(this.currentVehicle.model.quaternion);
+            this.position.copy(this.currentVehicle.model.position).add(dismountOffset);
+            this.position.y = 1.7; // Ground height
+            
+            // Update player model
+            this.playerModel.position.copy(this.position);
+            
+            // Return dinosaur to original height if stored
+            if (this.currentVehicle.originalHeight !== undefined) {
+                this.currentVehicle.model.position.y = this.currentVehicle.originalHeight;
+            }
+        }
+
         this.currentVehicle = null;
         this.moveSpeed = 30;
         this.turnSpeed = 2.5;
         this.playerModel.visible = true;
-        this.playerModel.position.copy(this.position);
         this.targetPosition.copy(this.position);
     }
 
@@ -376,6 +429,8 @@ export class Player {
     }
 
     handleVehicleMovement(delta: number) {
+        if (!this.currentVehicle) return;
+
         // Reset velocity
         this.velocity.x = 0;
         this.velocity.z = 0;
@@ -428,9 +483,37 @@ export class Player {
         this.position.lerp(this.targetPosition, positionSmoothing);
         this.currentVehicle.object.position.copy(this.position);
         this.currentVehicle.object.rotation.y = this.currentEuler.y;
+
+        if (this.currentVehicle.type === 'dinosaur') {
+            // Keep dinosaur and player at proper height
+            const groundHeight = 1.7;
+            const mountHeight = this.currentVehicle.mountOffset?.y || 5;
+            this.targetPosition.y = groundHeight + mountHeight;
+            
+            // Update positions with proper offset
+            this.position.lerp(this.targetPosition, 0.1);
+            
+            // Update dinosaur position and rotation
+            this.currentVehicle.model.position.copy(this.position).sub(this.currentVehicle.mountOffset);
+            this.currentVehicle.model.rotation.y = this.currentEuler.y;
+            
+            // Update player model position and rotation
+            this.playerModel.position.copy(this.position);
+            this.playerModel.rotation.y = this.currentEuler.y;
+            
+            // Optional: Add slight bob animation while moving
+            if (this.isMoving()) {
+                const bobHeight = Math.sin(Date.now() * 0.01) * 0.1;
+                this.playerModel.position.y += bobHeight;
+            }
+        } else {
+            // Existing spaceship logic
+            this.currentVehicle.object.position.copy(this.position);
+            this.currentVehicle.object.rotation.y = this.currentEuler.y;
+        }
     }
 
     isMoving(): boolean {
         return this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
     }
-} 
+}
