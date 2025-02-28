@@ -5,6 +5,7 @@ export class Environment {
     scene: THREE.Scene;
     loadingManager: THREE.LoadingManager;
     pyramids: THREE.Mesh[] = [];
+    palmTrees: THREE.Group[] = [];
     enhancements!: EnvironmentEnhancements;
 
     constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
@@ -15,10 +16,14 @@ export class Environment {
 
     init() {
         this.createGround();
+        this.createSandDunes();
         this.createPyramids();
         this.createSphinx();
+        this.createPalmTrees();
+        this.addAtmosphericEffects();
         // Initialize the environment enhancements
         this.enhancements = new EnvironmentEnhancements(this.scene, this.loadingManager);
+
     }
 
     createGround() {
@@ -34,6 +39,39 @@ export class Environment {
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         this.scene.add(ground);
+    }
+
+    createSandDunes() {
+        // Create multiple sand dunes with varying sizes
+        const dunePositions = [
+            new THREE.Vector3(300, 0, 200),
+            new THREE.Vector3(-300, 0, 300),
+            new THREE.Vector3(500, 0, -200),
+            new THREE.Vector3(-500, 0, -300)
+        ];
+
+        dunePositions.forEach((position) => {
+            const width = 100 + Math.random() * 200;
+            const height = 20 + Math.random() * 30;
+            const depth = 100 + Math.random() * 200;
+
+            const duneGeometry = new THREE.SphereGeometry(1, 32, 32);
+            duneGeometry.scale(width, height, depth);
+
+            const duneMaterial = new THREE.MeshStandardMaterial({
+                color: 0xE6C587,
+                roughness: 1,
+                metalness: 0
+            });
+
+            const dune = new THREE.Mesh(duneGeometry, duneMaterial);
+            dune.position.copy(position);
+            dune.rotation.x = -Math.PI / 2;
+            dune.castShadow = true;
+            dune.receiveShadow = true;
+
+            this.scene.add(dune);
+        });
     }
 
     createPyramids() {
@@ -135,6 +173,85 @@ export class Environment {
         });
         
         this.scene.add(sphinxGroup);
+    }
+
+    createPalmTrees() {
+        const palmPositions = [
+            new THREE.Vector3(100, 0, 100),
+            new THREE.Vector3(-150, 0, 150),
+            new THREE.Vector3(200, 0, -100),
+            new THREE.Vector3(-200, 0, -150),
+            new THREE.Vector3(300, 0, 50)
+        ];
+
+        palmPositions.forEach((position) => {
+            const palmTree = this.createSinglePalmTree();
+            palmTree.position.copy(position);
+            palmTree.scale.set(5, 5, 5);
+            this.palmTrees.push(palmTree);
+            this.scene.add(palmTree);
+        });
+    }
+
+    createSinglePalmTree() {
+        const palmGroup = new THREE.Group();
+
+        // Create trunk
+        const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 10, 8);
+        const trunkMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8B4513,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.castShadow = true;
+        palmGroup.add(trunk);
+
+        // Create palm leaves
+        const leavesCount = 12;
+        const leafMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2F4F2F,
+            roughness: 0.8,
+            metalness: 0.1,
+            side: THREE.DoubleSide
+        });
+
+        for (let i = 0; i < leavesCount; i++) {
+            const leafGeometry = new THREE.PlaneGeometry(0.8, 4);
+            const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+            
+            leaf.position.y = 5;
+            leaf.rotation.x = Math.PI / 4;
+            leaf.rotation.y = (i * Math.PI * 2) / leavesCount;
+            leaf.castShadow = true;
+            
+            palmGroup.add(leaf);
+        }
+
+        return palmGroup;
+    }
+
+    addAtmosphericEffects() {
+        // Add ambient light for better environment lighting
+        const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.3);
+        this.scene.add(ambientLight);
+
+        // Add directional light for sun effect
+        const sunLight = new THREE.DirectionalLight(0xFFFFFF, 1);
+        sunLight.position.set(500, 1000, 200);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 2000;
+        sunLight.shadow.camera.left = -1000;
+        sunLight.shadow.camera.right = 1000;
+        sunLight.shadow.camera.top = 1000;
+        sunLight.shadow.camera.bottom = -1000;
+        this.scene.add(sunLight);
+
+        // Add fog for depth effect
+        this.scene.fog = new THREE.Fog(0xE6C587, 500, 2000);
     }
 
     // Method to check collision with pyramids using the actual pyramid meshes
