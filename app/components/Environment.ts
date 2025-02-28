@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { EnvironmentEnhancements } from './EnvironmentEnhancements';
 
 export class Environment {
     scene: THREE.Scene;
     loadingManager: THREE.LoadingManager;
     pyramids: THREE.Mesh[] = [];
+    enhancements!: EnvironmentEnhancements;
 
     constructor(scene: THREE.Scene, loadingManager: THREE.LoadingManager) {
         this.scene = scene;
@@ -15,6 +17,8 @@ export class Environment {
         this.createGround();
         this.createPyramids();
         this.createSphinx();
+        // Initialize the environment enhancements
+        this.enhancements = new EnvironmentEnhancements(this.scene, this.loadingManager);
     }
 
     createGround() {
