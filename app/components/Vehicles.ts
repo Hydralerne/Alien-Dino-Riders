@@ -451,7 +451,8 @@ export class Vehicles {
         this.dinosaurs.push({
             model: group,
             speed: 25,
-            turnSpeed: 0.02
+            turnSpeed: 0.02,
+            height: 5
         });
     }
 
@@ -610,7 +611,8 @@ export class Vehicles {
             speed: 15,
             turnSpeed: 0.03,
             behaviors: ['graze', 'defend', 'patrol'],
-            type: 'stegosaurus'
+            type: 'stegosaurus',
+            height: 4
         });
     }
 
@@ -731,7 +733,8 @@ export class Vehicles {
             speed: 35,
             turnSpeed: 0.05,
             behaviors: ['hunt', 'stalk', 'patrol'],
-            type: 'raptor'
+            type: 'raptor',
+            height: 3
         });
     }
 
@@ -1148,12 +1151,18 @@ export class Vehicles {
     getNearestVehicle(playerPosition: THREE.Vector3, type: 'dinosaur' | 'spaceship') {
         const vehicles = type === 'dinosaur' ? this.dinosaurs : this.spaceships;
         let nearestVehicle = null;
-        let minDistance = 20; // Increased interaction distance
+        let minDistance = 20; // Interaction distance
         
         vehicles.forEach(vehicle => {
-            const distance = playerPosition.distanceTo(vehicle.object.position);
+            const vehiclePos = vehicle.model ? vehicle.model.position : vehicle.object.position;
+            const distance = playerPosition.distanceTo(vehiclePos);
             if (distance < minDistance) {
-                nearestVehicle = vehicle;
+                nearestVehicle = {
+                    ...vehicle,
+                    object: vehicle.model || vehicle.object,
+                    type: type,
+                    height: type === 'dinosaur' ? (vehicle.height || 5) : 2
+                };
                 minDistance = distance;
             }
         });

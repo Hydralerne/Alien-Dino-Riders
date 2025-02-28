@@ -179,9 +179,24 @@ export default function Game() {
             </div>
             <div id="game-ui">
                 <div id="vehicle-selection">
-                    <button id="select-dinosaur">Ride Dinosaur</button>
-                    <button id="select-spaceship">Pilot Spaceship</button>
-                    <button id="select-none">Walk</button>
+                    <button 
+                        id="select-dinosaur"
+                        onClick={() => playerRef.current?.selectVehicle('dinosaur')}
+                    >
+                        Ride Dinosaur
+                    </button>
+                    <button 
+                        id="select-spaceship"
+                        onClick={() => playerRef.current?.selectVehicle('spaceship')}
+                    >
+                        Pilot Spaceship
+                    </button>
+                    <button 
+                        id="select-none"
+                        onClick={() => playerRef.current?.dismountVehicle()}
+                    >
+                        Walk
+                    </button>
                 </div>
             </div>
             <div ref={containerRef} id="game-container" />
@@ -242,4 +257,4 @@ export default function Game() {
             `}</style>
         </div>
     );
-} 
+}
