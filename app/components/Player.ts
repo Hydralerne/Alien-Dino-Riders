@@ -63,6 +63,9 @@ export class Player {
     // Add these new properties for improved camera control
     cameraSmoothing: number = 0.08; // Reduced for more direct control
     verticalLookLimit: number = Math.PI * 0.45; // About 80 degrees up/down
+    defaultCameraDistance: number = 10;
+    ridingCameraDistance: number = 30; // Increased distance when riding
+    ridingCameraHeight: number = 15;   // Higher camera when riding
 
     constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, vehicles: Vehicles) {
         this.scene = scene;
@@ -274,7 +277,6 @@ export class Player {
     }
 
     mountVehicle(vehicle: any) {
-        // Dismount current vehicle first if any
         if (this.currentVehicle) {
             this.dismountVehicle();
         }
@@ -286,19 +288,27 @@ export class Player {
             this.moveSpeed = vehicle.speed || 40;
             this.turnSpeed = vehicle.turnSpeed || 2;
             
-            // Calculate mounting position on dinosaur's back
-            const mountOffset = new THREE.Vector3(0, vehicle.height || 5, -1); // Added Z offset
-            this.position.copy(vehicle.model.position).add(mountOffset);
+            // Adjust camera settings for riding
+            this.cameraDistance = this.ridingCameraDistance;
+            this.cameraHeight = this.ridingCameraHeight;
             
-            // Make player model visible and positioned correctly
-            this.playerModel.visible = true;
+            // Calculate mounting position on dinosaur's back with adjusted offsets
+            const mountOffset = new THREE.Vector3(
+                0,                          // Centered horizontally
+                vehicle.height || 5,        // Height above dinosaur
+                -0.5                        // Slightly forward
+            );
+            
+            // Update player position and model
+            this.position.copy(vehicle.model.position).add(mountOffset);
             this.playerModel.position.copy(this.position);
             
-            // Scale player model slightly smaller when riding
-            this.playerModel.scale.set(0.8, 0.8, 0.8);
+            // Make player more visible
+            this.playerModel.scale.set(1.5, 1.5, 1.5); // Increased scale
+            this.playerModel.visible = true;
             
-            // Adjust player model rotation to face forward
-            this.playerModel.rotation.y = vehicle.model.rotation.y;
+            // Ensure player is above the dinosaur
+            this.playerModel.position.y = vehicle.model.position.y + (vehicle.height || 5);
             
             // Store mounting data
             this.currentVehicle.mountOffset = mountOffset;
@@ -306,6 +316,17 @@ export class Player {
             
             // Update target position
             this.targetPosition.copy(this.position);
+            
+            // Ensure proper rotation
+            this.playerModel.rotation.y = vehicle.model.rotation.y;
+            
+            // Bring player model forward in render order
+            this.playerModel.renderOrder = 1;
+            this.playerModel.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.renderOrder = 1;
+                }
+            });
         } else {
             // Spaceship mounting logic (unchanged)
             this.moveSpeed = 60;
@@ -320,6 +341,10 @@ export class Player {
         if (!this.currentVehicle) return;
 
         if (this.currentVehicle.type === 'dinosaur') {
+            // Reset camera settings
+            this.cameraDistance = this.defaultCameraDistance;
+            this.cameraHeight = 5;
+            
             // Reset player model scale
             this.playerModel.scale.set(1, 1, 1);
             
@@ -353,8 +378,13 @@ export class Player {
             this.handleGroundMovement(delta);
         }
 
-        // Update camera position and rotation directly
-        const offset = new THREE.Vector3(0, this.cameraHeight, this.cameraDistance);
+        // Update camera position with adjusted offset based on vehicle state
+        const offset = new THREE.Vector3(
+            0, 
+            this.currentVehicle?.type === 'dinosaur' ? this.ridingCameraHeight : this.cameraHeight,
+            this.currentVehicle?.type === 'dinosaur' ? this.ridingCameraDistance : this.cameraDistance
+        );
+        
         offset.applyQuaternion(this.cameraRotation);
         this.camera.position.copy(this.position).add(offset);
         this.camera.quaternion.copy(this.cameraRotation);
@@ -493,18 +523,25 @@ export class Player {
             // Update positions with proper offset
             this.position.lerp(this.targetPosition, 0.1);
             
-            // Update dinosaur position and rotation
+            // Update dinosaur position
             this.currentVehicle.model.position.copy(this.position).sub(this.currentVehicle.mountOffset);
             this.currentVehicle.model.rotation.y = this.currentEuler.y;
             
-            // Update player model position and rotation
+            // Keep player visible and properly positioned
             this.playerModel.position.copy(this.position);
+            this.playerModel.position.y = this.currentVehicle.model.position.y + 
+                                        (this.currentVehicle.height || 5);
             this.playerModel.rotation.y = this.currentEuler.y;
             
-            // Optional: Add slight bob animation while moving
+            // Add riding animation
             if (this.isMoving()) {
-                const bobHeight = Math.sin(Date.now() * 0.01) * 0.1;
+                const time = Date.now() * 0.001;
+                const bobHeight = Math.sin(time * 5) * 0.1;
+                const sideAmount = Math.cos(time * 5) * 0.05;
+                
                 this.playerModel.position.y += bobHeight;
+                this.playerModel.position.x += sideAmount;
+                this.playerModel.rotation.z = -sideAmount * 0.5; // Slight lean
             }
         } else {
             // Existing spaceship logic
