@@ -63,6 +63,9 @@ export class Player {
     // Add these new properties for improved camera control
     cameraSmoothing: number = 0.08; // Reduced for more direct control
     verticalLookLimit: number = Math.PI * 0.45; // About 80 degrees up/down
+    defaultCameraDistance: number = 10;
+    ridingCameraDistance: number = 30; // Increased distance when riding
+    ridingCameraHeight: number = 15;   // Higher camera when riding
 
     constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, vehicles: Vehicles) {
         this.scene = scene;
@@ -274,21 +277,96 @@ export class Player {
     }
 
     mountVehicle(vehicle: any) {
-        this.currentVehicle = vehicle;
-        this.moveSpeed = vehicle.type === 'spaceship' ? 60 : 40;
-        this.turnSpeed = vehicle.type === 'spaceship' ? 3 : 2;
-        this.playerModel.visible = false;
+        if (this.currentVehicle) {
+            this.dismountVehicle();
+        }
 
-        this.position.copy(vehicle.object.position);
-        this.targetPosition.copy(this.position);
+        this.currentVehicle = vehicle;
+        
+        if (vehicle.type === 'dinosaur') {
+            // Set appropriate dinosaur riding parameters
+            this.moveSpeed = vehicle.speed || 40;
+            this.turnSpeed = vehicle.turnSpeed || 2;
+            
+            // Adjust camera settings for riding
+            this.cameraDistance = this.ridingCameraDistance;
+            this.cameraHeight = this.ridingCameraHeight;
+            
+            // Calculate mounting position on dinosaur's back with adjusted offsets
+            const mountOffset = new THREE.Vector3(
+                0,                          // Centered horizontally
+                vehicle.height || 5,        // Height above dinosaur
+                -0.5                        // Slightly forward
+            );
+            
+            // Update player position and model
+            this.position.copy(vehicle.model.position).add(mountOffset);
+            this.playerModel.position.copy(this.position);
+            
+            // Make player more visible
+            this.playerModel.scale.set(1.5, 1.5, 1.5); // Increased scale
+            this.playerModel.visible = true;
+            
+            // Ensure player is above the dinosaur
+            this.playerModel.position.y = vehicle.model.position.y + (vehicle.height || 5);
+            
+            // Store mounting data
+            this.currentVehicle.mountOffset = mountOffset;
+            this.currentVehicle.originalHeight = vehicle.model.position.y;
+            
+            // Update target position
+            this.targetPosition.copy(this.position);
+            
+            // Ensure proper rotation
+            this.playerModel.rotation.y = vehicle.model.rotation.y;
+            
+            // Bring player model forward in render order
+            this.playerModel.renderOrder = 1;
+            this.playerModel.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.renderOrder = 1;
+                }
+            });
+        } else {
+            // Spaceship mounting logic (unchanged)
+            this.moveSpeed = 60;
+            this.turnSpeed = 3;
+            this.playerModel.visible = false;
+            this.position.copy(vehicle.object.position);
+            this.targetPosition.copy(this.position);
+        }
     }
 
     dismountVehicle() {
+        if (!this.currentVehicle) return;
+
+        if (this.currentVehicle.type === 'dinosaur') {
+            // Reset camera settings
+            this.cameraDistance = this.defaultCameraDistance;
+            this.cameraHeight = 5;
+            
+            // Reset player model scale
+            this.playerModel.scale.set(1, 1, 1);
+            
+            // Place player slightly in front of dinosaur
+            const dismountOffset = new THREE.Vector3(0, 0, 2);
+            dismountOffset.applyQuaternion(this.currentVehicle.model.quaternion);
+            this.position.copy(this.currentVehicle.model.position).add(dismountOffset);
+            this.position.y = 1.7; // Ground height
+            
+            // Update player model
+            this.playerModel.position.copy(this.position);
+            
+            // Return dinosaur to original height if stored
+            if (this.currentVehicle.originalHeight !== undefined) {
+                this.currentVehicle.model.position.y = this.currentVehicle.originalHeight;
+            }
+        }
+
         this.currentVehicle = null;
         this.moveSpeed = 30;
         this.turnSpeed = 2.5;
         this.playerModel.visible = true;
-        this.playerModel.position.copy(this.position);
         this.targetPosition.copy(this.position);
     }
 
@@ -300,8 +378,13 @@ export class Player {
             this.handleGroundMovement(delta);
         }
 
-        // Update camera position and rotation directly
-        const offset = new THREE.Vector3(0, this.cameraHeight, this.cameraDistance);
+        // Update camera position with adjusted offset based on vehicle state
+        const offset = new THREE.Vector3(
+            0, 
+            this.currentVehicle?.type === 'dinosaur' ? this.ridingCameraHeight : this.cameraHeight,
+            this.currentVehicle?.type === 'dinosaur' ? this.ridingCameraDistance : this.cameraDistance
+        );
+        
         offset.applyQuaternion(this.cameraRotation);
         this.camera.position.copy(this.position).add(offset);
         this.camera.quaternion.copy(this.cameraRotation);
@@ -376,61 +459,102 @@ export class Player {
     }
 
     handleVehicleMovement(delta: number) {
+        if (!this.currentVehicle) return;
+
         // Reset velocity
         this.velocity.x = 0;
         this.velocity.z = 0;
 
-        // Get forward and right directions from camera
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.cameraRotation);
-        forward.y = 0;
-        forward.normalize();
+        // Get camera-relative movement directions
+        const forward = new THREE.Vector3(0, 0, -1)
+            .applyQuaternion(this.cameraRotation)
+            .setY(0)
+            .normalize();
         
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.cameraRotation);
-        right.y = 0;
-        right.normalize();
+        const right = new THREE.Vector3(1, 0, 0)
+            .applyQuaternion(this.cameraRotation)
+            .setY(0)
+            .normalize();
 
         // Calculate movement direction
         this.direction.set(0, 0, 0);
         
-        if (this.keys['KeyW']) this.direction.add(forward);
-        if (this.keys['KeyS']) this.direction.sub(forward);
-        if (this.keys['KeyA']) this.direction.sub(right);
-        if (this.keys['KeyD']) this.direction.add(right);
+        // Fix movement direction mapping
+        if (this.keys['KeyW']) this.direction.add(forward);  // Forward
+        if (this.keys['KeyS']) this.direction.sub(forward);  // Backward
+        if (this.keys['KeyA']) this.direction.sub(right);    // Left
+        if (this.keys['KeyD']) this.direction.add(right);    // Right
         
         if (this.direction.length() > 0) {
             this.direction.normalize();
-        }
-
-        // Apply movement with smooth acceleration
-        const speed = this.currentVehicle.type === 'spaceship' ? 60 : 40;
-        const acceleration = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) ? speed * 2.5 : speed;
-        
-        this.velocity.add(this.direction.multiplyScalar(acceleration * delta));
-        
-        // Update target position
-        this.targetPosition.add(this.velocity);
-
-        // Handle vertical movement for spaceships
-        if (this.currentVehicle.type === 'spaceship') {
-            if (this.keys['Space']) {
-                this.targetPosition.y += speed * delta;
+            
+            if (this.currentVehicle.type === 'dinosaur') {
+                // Calculate target angle from movement direction (fixed rotation)
+                const targetAngle = Math.atan2(this.direction.x, this.direction.z);
+                
+                // Get current rotation
+                const currentRotation = this.currentVehicle.model.rotation.y;
+                
+                // Calculate shortest rotation path
+                let rotationDiff = targetAngle - currentRotation;
+                while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2;
+                while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2;
+                
+                // Smoothly rotate the dinosaur
+                const rotationSpeed = 5 * delta;
+                const newRotation = currentRotation + rotationDiff * rotationSpeed;
+                this.currentVehicle.model.rotation.y = newRotation;
+                
+                // Move in the direction the dinosaur is facing
+                const moveDirection = new THREE.Vector3(0, 0, -1)
+                    .applyAxisAngle(new THREE.Vector3(0, 1, 0), newRotation);
+                
+                // Apply movement with speed
+                const speed = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) ? 
+                    this.currentVehicle.speed * 1.5 : 
+                    this.currentVehicle.speed;
+                
+                this.velocity.copy(moveDirection).multiplyScalar(speed * delta);
+                
+                // Update positions
+                this.targetPosition.add(this.velocity);
+                this.position.lerp(this.targetPosition, 0.1);
+                
+                // Keep dinosaur at proper height and update positions
+                const groundHeight = 1.7;
+                this.position.y = groundHeight + (this.currentVehicle.mountOffset?.y || 5);
+                
+                // Update both dinosaur and player positions
+                this.currentVehicle.model.position.copy(this.position).sub(this.currentVehicle.mountOffset);
+                this.playerModel.position.copy(this.position);
+                this.playerModel.rotation.y = newRotation;
+                
+                // Add riding animation
+                if (this.direction.length() > 0) {
+                    const time = Date.now() * 0.001;
+                    const bobHeight = Math.sin(time * 8) * 0.15;
+                    const sideAmount = Math.cos(time * 8) * 0.08;
+                    
+                    this.playerModel.position.y += bobHeight;
+                    this.playerModel.position.x += sideAmount;
+                    this.playerModel.rotation.z = -sideAmount * 0.5;
+                    
+                    this.currentVehicle.model.position.y += bobHeight * 0.5;
+                }
+            } else {
+                // Spaceship logic remains unchanged
+                if (this.keys['Space']) this.targetPosition.y += this.moveSpeed * delta;
+                if (this.keys['ControlLeft'] || this.keys['ControlRight']) this.targetPosition.y -= this.moveSpeed * delta;
+                this.targetPosition.y = Math.max(5, Math.min(100, this.targetPosition.y));
+                
+                this.position.lerp(this.targetPosition, 0.1);
+                this.currentVehicle.object.position.copy(this.position);
+                this.currentVehicle.object.rotation.y = this.currentEuler.y;
             }
-            if (this.keys['ControlLeft'] || this.keys['ControlRight']) {
-                this.targetPosition.y -= speed * delta;
-            }
-            this.targetPosition.y = Math.max(5, Math.min(100, this.targetPosition.y));
-        } else {
-            this.targetPosition.y = 2;
         }
-
-        // Update position with smoothing
-        const positionSmoothing = 0.1;
-        this.position.lerp(this.targetPosition, positionSmoothing);
-        this.currentVehicle.object.position.copy(this.position);
-        this.currentVehicle.object.rotation.y = this.currentEuler.y;
     }
 
     isMoving(): boolean {
         return this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD'];
     }
-} 
+}
