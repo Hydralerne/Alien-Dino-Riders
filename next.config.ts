@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+import { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {
-  /* config options here */
+const config: NextConfig = {
+  webpack: (config) => {
+    config.externals = [...(config.externals || []), 'bufferutil', 'utf-8-validate'];
+    return config;
+  },
 };
 
-export default nextConfig;
+export default config;
