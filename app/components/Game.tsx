@@ -47,8 +47,46 @@ export default function Game() {
         camera.position.set(0, 100, 200);
         cameraRef.current = camera;
 
-        // Initialize renderer
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Initialize renderer with error handling
+        let renderer: THREE.WebGLRenderer;
+        try {
+            // First try to create a renderer with antialias
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                powerPreference: 'default',
+                failIfMajorPerformanceCaveat: false
+            });
+        } catch (e) {
+            console.warn('Failed to create WebGL renderer with antialias, trying without:', e);
+            try {
+                // Fallback to basic renderer without antialias
+                renderer = new THREE.WebGLRenderer({ 
+                    antialias: false,
+                    powerPreference: 'default',
+                    failIfMajorPerformanceCaveat: false
+                });
+            } catch (e2) {
+                console.error('WebGL not supported:', e2);
+                // Show error message to user
+                const errorDiv = document.createElement('div');
+                errorDiv.style.position = 'fixed';
+                errorDiv.style.top = '50%';
+                errorDiv.style.left = '50%';
+                errorDiv.style.transform = 'translate(-50%, -50%)';
+                errorDiv.style.color = 'white';
+                errorDiv.style.background = 'rgba(0,0,0,0.8)';
+                errorDiv.style.padding = '20px';
+                errorDiv.style.borderRadius = '10px';
+                errorDiv.innerHTML = `
+                    <h2>WebGL Error</h2>
+                    <p>Your browser or device doesn't support WebGL, which is required to run this game.</p>
+                    <p>Try using a different browser or updating your graphics drivers.</p>
+                `;
+                document.body.appendChild(errorDiv);
+                return;
+            }
+        }
+
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
