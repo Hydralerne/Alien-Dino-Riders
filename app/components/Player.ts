@@ -27,8 +27,8 @@ export class Player {
     keys: { [key: string]: boolean } = {};
     verticalVelocity: number = 0;
     isGrounded: boolean = true;
-    jumpForce: number = 15;
-    gravity: number = 9.8;
+    jumpForce: number = 20;          // Increased from 15 for higher jumps
+    gravity: number = 55;            // Reduced from 65 for slightly longer air time
     mouseSensitivity: number = 0.002;
     mouseSmoothing: number = 0.1;    // Adjusted for smoother camera
     horizontalAngle: number = 0;
@@ -66,6 +66,8 @@ export class Player {
     defaultCameraDistance: number = 10;
     ridingCameraDistance: number = 30; // Increased distance when riding
     ridingCameraHeight: number = 15;   // Higher camera when riding
+    maxFallSpeed: number = 50;
+    airControl: number = 0.8;        // Increased from 0.7 for better air control
 
     constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, vehicles: Vehicles) {
         this.scene = scene;
@@ -393,15 +395,15 @@ export class Player {
     handleGroundMovement(delta: number) {
         const moveDirection = new THREE.Vector3(0, 0, 0);
         
-        // Get camera's forward and right vectors for movement (camera-relative movement)
+        // Get camera's forward and right vectors for movement
         const forward = new THREE.Vector3(0, 0, -1)
             .applyQuaternion(this.cameraRotation)
-            .setY(0)  // Keep movement on ground plane
+            .setY(0)
             .normalize();
         
         const right = new THREE.Vector3(1, 0, 0)
             .applyQuaternion(this.cameraRotation)
-            .setY(0)  // Keep movement on ground plane
+            .setY(0)
             .normalize();
 
         // Apply movement based on key codes
@@ -416,13 +418,22 @@ export class Player {
             this.isGrounded = false;
         }
 
-        // Apply gravity
-        this.verticalVelocity -= this.gravity * delta;
+        // Apply gravity with terminal velocity
+        if (!this.isGrounded) {
+            this.verticalVelocity -= this.gravity * delta;
+            this.verticalVelocity = Math.max(this.verticalVelocity, -this.maxFallSpeed);
+        }
         
         if (moveDirection.length() > 0) {
             moveDirection.normalize();
-            const speed = this.keys['ShiftLeft'] || this.keys['ShiftRight'] ? this.moveSpeed * 2 : this.moveSpeed;
-            moveDirection.multiplyScalar(speed * delta);
+            const speed = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) ? 
+                this.moveSpeed * 2 : 
+                this.moveSpeed;
+            
+            // Apply air control - reduced movement speed while in air
+            const finalSpeed = this.isGrounded ? speed : speed * this.airControl;
+            
+            moveDirection.multiplyScalar(finalSpeed * delta);
             
             // Update horizontal position
             this.position.x += moveDirection.x;
@@ -432,8 +443,8 @@ export class Player {
         // Update vertical position
         this.position.y += this.verticalVelocity * delta;
 
-        // Ground check
-        if (this.position.y <= 1.7) { // 1.7 is our ground level
+        // Ground check with small buffer for smoother landing
+        if (this.position.y <= 1.7) {
             this.position.y = 1.7;
             this.verticalVelocity = 0;
             this.isGrounded = true;

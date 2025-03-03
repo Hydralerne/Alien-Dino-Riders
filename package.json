@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@types/three": "^0.174.0",
+<<<<<<< Updated upstream
     "express": "^4.21.2",
     "next": "15.2.0",
     "react": "^19.0.0",
@@ -19,6 +20,12 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "three": "^0.174.0"
+=======
+    "next": "^14.x.x",
+    "react": "^18.x.x",
+    "react-dom": "^18.x.x",
+    "three": "^0.x.x"
+>>>>>>> Stashed changes
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
